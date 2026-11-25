@@ -18,9 +18,7 @@ def main():
         if host not in {"127.0.0.1", "::1", "localhost"}:
             parser.error("Dashboard host must be loopback-only (127.0.0.1, ::1 or localhost).")
         from .app import app
-        from .training_routes import router as training_router
         from .security import get_dashboard_token
-        app.include_router(training_router)
         url = f"http://{host}:{port}"
         private_url = url + "/#token=" + get_dashboard_token()
         print(f"Private OpenProspect dashboard: {private_url}")
