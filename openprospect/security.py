@@ -79,6 +79,17 @@ def install_security(app: FastAPI) -> None:
             response.delete_cookie("openprospect_session", path="/", samesite="strict")
             return response
 
+        if request.url.path == "/unsubscribe" and request.method == "GET":
+            return await call_next(request)
+
+        if request.url.path == "/api/whatsapp/inbound" and request.method == "POST":
+            import os
+            expected = os.getenv("WA_SIDECAR_TOKEN", "")
+            supplied = request.headers.get("authorization", "")
+            if expected and hmac.compare_digest(supplied, "Bearer " + expected):
+                return await call_next(request)
+            return JSONResponse({"detail": "Invalid sidecar authentication."}, status_code=401)
+
         session = request.cookies.get("openprospect_session", "")
         if not hmac.compare_digest(session, get_dashboard_token()):
             if request.method in {"GET", "HEAD"}:
