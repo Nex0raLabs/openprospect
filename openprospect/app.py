@@ -4,7 +4,7 @@ from fastapi import FastAPI,Form,HTTPException,File,UploadFile
 from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse
 from .db import (add_company,list_companies,connect,add_contact,list_contacts,
  add_campaign,list_campaigns,add_draft,list_drafts,set_draft_status,
- add_suppression,list_activity,is_suppressed,log,find_company_duplicate)
+ add_suppression,list_activity,is_suppressed,log,find_company_duplicate,save_company_observations)
 from .ai import ask_ai
 from .discovery import discover_osm
 from .profiling import profile_website
@@ -26,7 +26,7 @@ form.inline{display:inline}form.inline button{margin:2px}.tag{color:#3fb950}.war
 
 def esc(v):return html.escape(str(v or ""),quote=True)
 def shell(body):
- return f'<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenProspect</title>{CSS}</head><body><header><div><div class="brand">◈ OpenProspect</div><small>Free, local-first business prospecting</small></div><small>Local database · Human approval · No auto-send</small></header><nav><a href="/">Today</a><a href="/train">Train</a><a href="/discover">Discover</a><a href="/companies">Companies</a><a href="/contacts">Contacts</a><a href="/campaigns">Campaigns</a><a href="/drafts">Outbox</a><a href="/activity">Activity</a><a href="/settings">Settings</a></nav><main>{body}</main></body></html>'
+ return f'<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenProspect</title>{CSS}</head><body><header><div><div class="brand">◈ OpenProspect</div><small>Free, local-first business prospecting</small></div><small>Local database · Human approval · No auto-send</small></header><nav><a href="/">Today</a><a href="/train">Train</a><a href="/discover">Discover</a><a href="/signals">Signals</a><a href="/companies">Companies</a><a href="/contacts">Contacts</a><a href="/campaigns">Campaigns</a><a href="/drafts">Outbox</a><a href="/activity">Activity</a><a href="/settings">Settings</a></nav><main>{body}</main></body></html>'
 
 def company_table(items):
  if not items:return "<p class='muted'>No companies yet. Add one or use Discover.</p>"
@@ -88,7 +88,9 @@ def profile_company(company_id:int):
  if not row:raise HTTPException(404,"Company not found")
  data=profile_website(row["website"])
  if data.get("error"):return shell(f"<h1>Website profile</h1><p class='warning'>{esc(data['error'])}</p><a href='/company/{company_id}'>Back</a>")
- return shell(f"<h1>Website profile: {esc(row['name'])}</h1><section><p><b>{esc(data['title'])}</b></p><p>{esc(data['description'])}</p><p>Fetched: <a href='{esc(data['url'])}'>{esc(data['url'])}</a></p><h3>Public email strings found (unverified)</h3><ul>{''.join('<li>'+esc(e)+'</li>' for e in data['emails']) or '<li>None found</li>'}</ul><h3>Possible phone strings (unverified)</h3><ul>{''.join('<li>'+esc(p)+'</li>' for p in data['phones']) or '<li>None found</li>'}</ul><h3>Page text excerpt</h3><p>{esc(data['text'][:5000])}</p></section><a href='/company/{company_id}'>Back to company</a>")
+ save_company_observations(company_id,data.get("signals",[]))
+ signal_rows="".join(f"<tr><td>{esc(s['label'])}</td><td>{s['weight']}</td><td>{s['confidence']:.0%}</td><td><a href='{esc(s['evidence_url'])}'>Evidence</a></td></tr>" for s in data.get("signals",[]))
+ return shell(f"<h1>Website profile: {esc(row['name'])}</h1><section><p><b>{esc(data['title'])}</b></p><p>{esc(data['description'])}</p><p>Fetched: <a href='{esc(data['url'])}'>{esc(data['url'])}</a></p><p>Opportunity score: <b>{data['score']}/100</b> · Pages read: {len(data['pages'])} · Load: {data['load_seconds']}s</p><h3>Buying signals</h3><table><tr><th>Signal</th><th>Weight</th><th>Confidence</th><th>Evidence</th></tr>{signal_rows or '<tr><td colspan=4>No enabled signals found</td></tr>'}</table><h3>Public email strings found (unverified)</h3><ul>{''.join('<li>'+esc(e)+'</li>' for e in data['emails']) or '<li>None found</li>'}</ul><h3>Possible phone strings (unverified)</h3><ul>{''.join('<li>'+esc(p)+'</li>' for p in data['phones']) or '<li>None found</li>'}</ul><h3>Page text excerpt</h3><p>{esc(data['text'][:5000])}</p></section><a href='/company/{company_id}'>Back to company</a>")
 
 @app.get("/contacts",response_class=HTMLResponse)
 def contacts_page():
@@ -243,3 +245,7 @@ from .security import install_security
 from .training_routes import router as training_router
 app.include_router(training_router)
 install_security(app)
+
+
+from .signals_routes import router as signals_router
+app.include_router(signals_router)
