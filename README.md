@@ -50,7 +50,7 @@ copy .env.example .env
 openprospect dashboard
 ```
 
-The dashboard binds to `127.0.0.1` by default and stores data in `%USERPROFILE%\.openprospect\openprospect.db`. Keep it local; do not expose the development server directly to the public internet. Stop it with `Ctrl+C`.
+The dashboard binds to `127.0.0.1` by default, prints a private token link, and stores data in `%USERPROFILE%\.openprospect\`. Keep the link private and do not expose the development server directly to the public internet. Stop it with `Ctrl+C`.
 
 ## Train OpenProspect on your product
 
