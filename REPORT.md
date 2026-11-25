@@ -121,11 +121,12 @@ GitHub Actions did perform a clean checkout and install on hosted runners. The a
 
 | Fix | Commit |
 |---|---|
-| Correct capability-table literal newline defect; reconcile contradictory README claims; explicitly enumerate missing and unverified integrations | `8b7aab4cebb56cb770f69c474f4af5c55af06e1d` |
+| Reconcile contradictory README claims and enumerate missing/unverified integrations | `8b7aab4cebb56cb770f69c474f4af5c55af06e1d` |
+| Repair the literal `\\n` sequence in the README capability table; verified the seven affected rows render as seven separate Markdown rows | `f73aac9c898a7c8fb581326611d03b56dd6424f2` |
 | Replace misleading “No auto-send” dashboard header with “No automatic campaign sending” while retaining explicit manual-send controls | `25924f43099388206bae99d51c78bf9ccb9a95ae` |
 | Correct CLI status output so it no longer claims all outbound sending is disabled | `c1e52efe4c9892a9b07a68d9a6c68c4f515442e4` |
 
-No code-level security or integration fix is claimed in this audit. The SSRF, delivery idempotency, WhatsApp safeguards and missing workflow features require implementation and dedicated regression tests before they can be marked fixed.
+No code-level security or integration fix is claimed in this audit. The latest CI run for the current README fix, [45712288529](https://github.com/linkto254-bot/openprospect/actions/runs/45712288529), was pending when this report was updated; the previous full six-job success was run [45711353671](https://github.com/linkto254-bot/openprospect/actions/runs/45711353671) on the pre-audit branch head. The SSRF, delivery idempotency, WhatsApp safeguards and missing workflow features require implementation and dedicated regression tests before they can be marked fixed.
 
 ## 6. Needs my input
 
