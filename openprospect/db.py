@@ -233,3 +233,14 @@ def set_contact_email_status(contact_id, status, reason=""):
             "verified_at=CASE WHEN ?='verified' THEN CURRENT_TIMESTAMP ELSE '' END WHERE id=?",
             (status, reason, status, contact_id),
         )
+
+
+def set_contact_email(contact_id, email, status="guess", reason=""):
+    if status not in {"unverified", "verified", "risky", "guess", "invalid"}:
+        raise ValueError("Invalid email status.")
+    with connect() as c:
+        c.execute(
+            "UPDATE contacts SET email=?,email_status=?,email_verification_reason=?,"
+            "verified_at=CASE WHEN ?='verified' THEN CURRENT_TIMESTAMP ELSE '' END WHERE id=?",
+            (email.strip(), status, reason, status, contact_id),
+        )
