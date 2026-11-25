@@ -60,3 +60,26 @@ def test_email_pattern_learning_and_guess_labels():
         "status": "guess",
         "pattern": "first.last",
     }
+
+
+def test_contact_verify_action_persists_result(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENPROSPECT_HOME", str(tmp_path))
+    from fastapi.testclient import TestClient
+    from openprospect import app as app_module
+    from openprospect.db import add_company, add_contact, connect
+    from openprospect.security import get_dashboard_token
+
+    company_id = add_company("Mail Test Co")
+    contact_id = add_contact(company_id, name="Test Person", email="person@example.test")
+    client = TestClient(app_module.app, base_url="http://127.0.0.1")
+    client.post("/auth/exchange", json={"token": get_dashboard_token()})
+    monkeypatch.setattr(app_module, "verify_email", lambda address, is_guess=False: {
+        "address": address, "status": "verified", "reason": "SMTP accepted recipient and rejected random address.",
+        "mx_found": True, "role_account": False, "catch_all": False,
+    })
+    response = client.post(f"/contact/{contact_id}/verify")
+    assert response.status_code == 200
+    assert "verified" in response.text
+    with connect() as conn:
+        row = conn.execute("SELECT email_status FROM contacts WHERE id=?", (contact_id,)).fetchone()
+    assert row["email_status"] == "verified"
