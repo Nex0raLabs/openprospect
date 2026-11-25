@@ -1,38 +1,174 @@
-from fastapi import FastAPI, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
-from .db import add_company, list_companies, connect
+from __future__ import annotations
+import csv,html,io
+from fastapi import FastAPI,Form,HTTPException
+from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse
+from .db import (add_company,list_companies,connect,add_contact,list_contacts,
+ add_campaign,list_campaigns,add_draft,list_drafts,set_draft_status,
+ add_suppression,list_activity,is_suppressed,log)
 from .ai import ask_ai
-app=FastAPI(title="OpenProspect",version="0.1.0")
-CSS="""<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d1117;color:#e6edf3;font:15px system-ui}header{padding:22px 5%;border-bottom:1px solid #30363d;display:flex;justify-content:space-between}.brand{font-size:23px;font-weight:800}small,.muted{color:#8b949e}nav{padding:16px 5%;border-bottom:1px solid #30363d;display:flex;gap:22px;flex-wrap:wrap}a{color:#58a6ff;text-decoration:none}main{max-width:1120px;margin:34px auto;padding:0 22px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}.card,section{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px;margin-bottom:16px}h1{font-size:30px;margin:0 0 8px}.number{font-size:32px;font-weight:800;margin-top:12px}input,textarea,button{font:inherit;padding:11px;border-radius:8px;border:1px solid #30363d;background:#0d1117;color:#e6edf3;width:100%;margin:5px 0}button{background:#238636;border:0;font-weight:700;cursor:pointer}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:11px;border-bottom:1px solid #30363d}@media(max-width:600px){header{flex-direction:column;gap:8px}}</style>"""
+from .discovery import discover_osm
+from .profiling import profile_website
+
+app=FastAPI(title="OpenProspect",version="0.2.0")
+CSS="""<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d1117;color:#e6edf3;font:15px system-ui}
+header{padding:20px 4%;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:23px;font-weight:800}small,.muted{color:#8b949e}nav{padding:14px 4%;border-bottom:1px solid #30363d;display:flex;gap:18px;flex-wrap:wrap}
+a{color:#58a6ff;text-decoration:none}main{max-width:1180px;margin:28px auto;padding:0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.card,section{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px;margin-bottom:14px}
+h1{font-size:28px;margin:0 0 8px}.number{font-size:30px;font-weight:800;margin-top:8px}
+input,textarea,select,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #30363d;background:#0d1117;color:#e6edf3;width:100%;margin:5px 0}
+textarea{min-height:90px}button{background:#238636;border:0;font-weight:700;cursor:pointer;width:auto;padding:10px 16px}
+button.secondary{background:#30363d}table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}td,th{text-align:left;padding:10px;border-bottom:1px solid #30363d;vertical-align:top}
+form.inline{display:inline}form.inline button{margin:2px}.tag{color:#3fb950}.warning{color:#d29922}.muted{line-height:1.5}
+@media(max-width:600px){header{align-items:flex-start;flex-direction:column;gap:8px}}
+</style>"""
+
+def esc(v):return html.escape(str(v or ""),quote=True)
 def shell(body):
- return f'<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenProspect</title>{CSS}</head><body><header><div><div class="brand">◈ OpenProspect</div><small>Free, open-source prospecting workspace</small></div><small>Local-first · Human approval</small></header><nav><a href="/">Today</a><a href="/companies">Companies</a><a href="/drafts">Drafts</a><a href="/docs">API docs</a></nav><main>{body}</main></body></html>'
-def table(items):
- if not items:return '<p class="muted">No companies yet.</p>'
- rows="".join(f"<tr><td>{x['name']}</td><td>{x['website'] or '—'}</td><td>{x['industry']}</td><td>{x['location']}</td></tr>" for x in items)
- return f"<table><tr><th>Company</th><th>Website</th><th>Industry</th><th>Location</th></tr>{rows}</table>"
+ return f'<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenProspect</title>{CSS}</head><body><header><div><div class="brand">◈ OpenProspect</div><small>Free, local-first business prospecting</small></div><small>Local database · Human approval · No auto-send</small></header><nav><a href="/">Today</a><a href="/discover">Discover</a><a href="/companies">Companies</a><a href="/contacts">Contacts</a><a href="/campaigns">Campaigns</a><a href="/drafts">Outbox</a><a href="/activity">Activity</a><a href="/settings">Settings</a></nav><main>{body}</main></body></html>'
+
+def company_table(items):
+ if not items:return "<p class='muted'>No companies yet. Add one or use Discover.</p>"
+ rows="".join(f"<tr><td><b>{esc(x['name'])}</b><br><small>#{x['id']} · {esc(x['source'])}</small></td><td>{esc(x['website']) or '—'}</td><td>{esc(x['industry'])}</td><td>{esc(x['location'])}</td><td><a href='/company/{x['id']}'>Open</a></td></tr>" for x in items)
+ return f"<table><tr><th>Company</th><th>Website</th><th>Industry</th><th>Location</th><th></th></tr>{rows}</table>"
+
 @app.get("/",response_class=HTMLResponse)
 def home():
- items=list_companies()
- with connect() as c: drafts=c.execute("SELECT COUNT(*) n FROM drafts").fetchone()["n"]
- return shell(f"<h1>Your prospecting workspace</h1><p class='muted'>Manage prospects and prepare outreach. Nothing is sent automatically.</p><div class='grid'><div class='card'>Companies<div class='number'>{len(items)}</div></div><div class='card'>Drafts<div class='number'>{drafts}</div></div><div class='card'>Emails sent<div class='number'>0</div><small>Sending is not enabled in this release</small></div></div><section><h2>Add a company</h2><form method='post' action='/companies'><input name='name' placeholder='Business name' required><input name='website' placeholder='Website URL'><input name='industry' placeholder='Industry'><input name='location' placeholder='City, country'><textarea name='notes' placeholder='Notes'></textarea><button>Add company</button></form></section><section><h2>Recent companies</h2>{table(items[:10])}</section>")
+ companies=list_companies(10000);contacts=list_contacts(10000);drafts=list_drafts();campaigns=list_campaigns()
+ pending=sum(1 for d in drafts if d["status"]=="draft")
+ return shell(f"<h1>Today</h1><p class='muted'>Your local prospecting workspace. Review evidence, organise contacts and prepare drafts. OpenProspect does not send emails.</p><div class='grid'><div class='card'>Companies<div class='number'>{len(companies)}</div></div><div class='card'>Contacts<div class='number'>{len(contacts)}</div></div><div class='card'>Campaigns<div class='number'>{len(campaigns)}</div></div><div class='card'>Drafts awaiting review<div class='number'>{pending}</div></div></div><section><h2>Get started</h2><p><a href='/discover'>Discover businesses</a> using free OpenStreetMap data, or <a href='/companies'>add a company manually</a>.</p><p class='muted'>Coverage depends on community map data. Businesses with websites can still be found; a website is not evidence of consent to marketing.</p></section><section><h2>Recent companies</h2>{company_table(companies[:12])}</section><section><h2>Safety</h2><p class='warning'>Outbound email delivery is intentionally not implemented in this release. Draft approval only changes local status; it never sends a message.</p></section>")
+
+@app.get("/discover",response_class=HTMLResponse)
+def discover_page():
+ return shell("""<h1>Discover businesses</h1><p class='muted'>Free OpenStreetMap discovery. Searches a 10 km radius around the place you enter. Results depend on OpenStreetMap coverage and are not a complete business directory.</p><section><form method='post' action='/discover'><label>City or place</label><input name='city' placeholder='Nairobi, Kenya' required><label>Business category</label><select name='category'><option>any business</option><option>restaurant</option><option>cafe</option><option>hotel</option><option>shop</option><option>beauty</option><option>clinic</option><option>dentist</option><option>school</option><option>gym</option><option>supermarket</option></select><label>Maximum results</label><input name='limit' type='number' min='1' max='200' value='50'><button>Search free map data</button></form></section><p><a href='/companies'>View saved companies</a></p>""")
+
+@app.post("/discover",response_class=HTMLResponse)
+def discover_run(city:str=Form(...),category:str=Form("any business"),limit:int=Form(50)):
+ try: results=discover_osm(city,category,limit)
+ except Exception as e:return shell(f"<h1>Discovery issue</h1><p class='warning'>{esc(e)}</p><a href='/discover'>Try again</a>")
+ saved=0
+ for x in results:
+  # Skip exact duplicate name + website/location pair.
+  with connect() as c:
+   exists=c.execute("SELECT id FROM companies WHERE lower(name)=lower(?) AND lower(location)=lower(?)",(x["name"],x["address"] or city)).fetchone()
+  if exists:continue
+  add_company(x["name"],x["website"],x["category"],x["address"] or city,"Phone: "+x["phone"] if x["phone"] else "", "openstreetmap",x["source_url"]);saved+=1
+ rows="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['category'])}</td><td>{esc(x['website']) or 'No website listed'}</td><td>{esc(x['phone'])}</td></tr>" for x in results)
+ log("discovery_completed",f"{city}: {len(results)} found, {saved} new")
+ return shell(f"<h1>Discovery complete</h1><p>Found {len(results)} map entries; saved {saved} new companies.</p><section><table><tr><th>Name</th><th>Category</th><th>Website</th><th>Phone</th></tr>{rows}</table></section><a href='/companies'>Open company register</a> · <a href='/discover'>Search again</a>")
+
 @app.get("/companies",response_class=HTMLResponse)
-def companies_page(): return shell("<h1>Companies</h1>"+table(list_companies(500)))
+def companies_page():return shell("<h1>Companies</h1>"+company_table(list_companies(10000))+"""<section><h2>Add company manually</h2><form method='post' action='/companies'><input name='name' placeholder='Business name' required><input name='website' placeholder='https://example.com'><input name='industry' placeholder='Industry'><input name='location' placeholder='City, country'><textarea name='notes' placeholder='Notes and source context'></textarea><button>Add company</button></form><p><a href='/export/companies.csv'>Export companies as CSV</a></p></section>""")
+
 @app.post("/companies")
 def create_company(name:str=Form(...),website:str=Form(""),industry:str=Form(""),location:str=Form(""),notes:str=Form("")):
- add_company(name,website,industry,location,notes);return RedirectResponse("/",status_code=303)
-@app.get("/api/companies")
-def api_companies(): return {"companies":list_companies(500)}
-@app.post("/api/companies")
-def api_add_company(payload:dict):
- if not payload.get("name"): raise HTTPException(400,"name is required")
- ident=add_company(payload["name"],payload.get("website",""),payload.get("industry",""),payload.get("location",""),payload.get("notes",""),"api")
- return {"id":ident,"ok":True}
+ add_company(name,website,industry,location,notes);return RedirectResponse("/companies",303)
+
+@app.get("/company/{company_id}",response_class=HTMLResponse)
+def company_detail(company_id:int):
+ with connect() as c:
+  row=c.execute("SELECT * FROM companies WHERE id=?",(company_id,)).fetchone()
+  contacts=[dict(x) for x in c.execute("SELECT * FROM contacts WHERE company_id=? ORDER BY id DESC",(company_id,))]
+ if not row:raise HTTPException(404,"Company not found")
+ x=dict(row)
+ profile=f"<section><h2>Website profile</h2><form method='post' action='/company/{company_id}/profile'><button>Read public website</button></form><p class='muted'>Fetches the public homepage only. Respect robots.txt, site terms and rate limits; this is not a verification of contact consent.</p></section>" if x["website"] else ""
+ cs="".join(f"<tr><td>{esc(c['name'])}</td><td>{esc(c['title'])}</td><td>{esc(c['email'])}</td><td>{esc(c['email_status'])}</td></tr>" for c in contacts)
+ return shell(f"<h1>{esc(x['name'])}</h1><p class='muted'>{esc(x['industry'])} · {esc(x['location'])} · Source: {esc(x['source'])}</p><section><p>Website: {('<a href="'+esc(x['website'])+'" rel="noreferrer">'+esc(x['website'])+'</a>') if x['website'].startswith(('http://','https://')) else esc(x['website']) or 'Not recorded'}</p><p>{esc(x['notes'])}</p><small>Source record: {esc(x['source_url'])}</small></section>{profile}<section><h2>Add contact</h2><form method='post' action='/company/{company_id}/contacts'><input name='name' placeholder='Contact name'><input name='title' placeholder='Role / title'><input name='email' placeholder='Email (only if lawfully obtained)'><input name='phone' placeholder='Phone'><input name='source_url' placeholder='Public source URL'><select name='email_status'><option>unknown</option><option>unverified</option><option>verified</option><option>invalid</option></select><textarea name='notes' placeholder='Notes'></textarea><button>Save contact</button></form></section><section><h2>Contacts</h2><table><tr><th>Name</th><th>Role</th><th>Email</th><th>Status</th></tr>{cs}</table></section><section><h2>Create an outreach draft</h2><form method='post' action='/company/{company_id}/draft'><input name='contact_id' type='number' placeholder='Contact ID (optional)'><input name='subject' placeholder='Subject'><textarea name='context' placeholder='Your offer and relevant context'></textarea><button>Create AI draft</button></form></section>")
+
+@app.post("/company/{company_id}/contacts")
+def create_contact(company_id:int,name:str=Form(""),title:str=Form(""),email:str=Form(""),phone:str=Form(""),source_url:str=Form(""),email_status:str=Form("unknown"),notes:str=Form("")):
+ with connect() as c:
+  if not c.execute("SELECT id FROM companies WHERE id=?",(company_id,)).fetchone():raise HTTPException(404,"Company not found")
+  if email and is_suppressed(email):raise HTTPException(400,"This address is on your suppression list.")
+ add_contact(company_id,name,title,email,phone,source_url,email_status,notes);return RedirectResponse(f"/company/{company_id}",303)
+
+@app.post("/company/{company_id}/profile",response_class=HTMLResponse)
+def profile_company(company_id:int):
+ with connect() as c:row=c.execute("SELECT * FROM companies WHERE id=?",(company_id,)).fetchone()
+ if not row:raise HTTPException(404,"Company not found")
+ data=profile_website(row["website"])
+ if data.get("error"):return shell(f"<h1>Website profile</h1><p class='warning'>{esc(data['error'])}</p><a href='/company/{company_id}'>Back</a>")
+ return shell(f"<h1>Website profile: {esc(row['name'])}</h1><section><p><b>{esc(data['title'])}</b></p><p>{esc(data['description'])}</p><p>Fetched: <a href='{esc(data['url'])}'>{esc(data['url'])}</a></p><h3>Public email strings found (unverified)</h3><ul>{''.join('<li>'+esc(e)+'</li>' for e in data['emails']) or '<li>None found</li>'}</ul><h3>Possible phone strings (unverified)</h3><ul>{''.join('<li>'+esc(p)+'</li>' for p in data['phones']) or '<li>None found</li>'}</ul><h3>Page text excerpt</h3><p>{esc(data['text'][:5000])}</p></section><a href='/company/{company_id}'>Back to company</a>")
+
+@app.get("/contacts",response_class=HTMLResponse)
+def contacts_page():
+ rows=list_contacts()
+ body="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['company_name'])}</td><td>{esc(x['title'])}</td><td>{esc(x['email'])}</td><td>{esc(x['email_status'])}</td><td><a href='/company/{x['company_id']}'>Company</a></td></tr>" for x in rows)
+ return shell("<h1>Contacts</h1><p class='muted'>Contact records are manually added or sourced from public company pages. Email status is not independently verified by this release.</p><table><tr><th>Name</th><th>Company</th><th>Role</th><th>Email</th><th>Status</th><th></th></tr>"+body+"</table><p><a href='/export/contacts.csv'>Export contacts CSV</a></p>")
+
+@app.get("/campaigns",response_class=HTMLResponse)
+def campaigns_page():
+ rows="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['description'])}</td><td>{esc(x['status'])}</td></tr>" for x in list_campaigns())
+ return shell("<h1>Campaigns</h1><section><form method='post' action='/campaigns'><input name='name' placeholder='Campaign name' required><textarea name='description' placeholder='Goal, target audience and offer'></textarea><button>Create campaign</button></form></section><table><tr><th>Name</th><th>Description</th><th>Status</th></tr>"+rows+"</table>")
+@app.post("/campaigns")
+def create_campaign_route(name:str=Form(...),description:str=Form("")):
+ add_campaign(name,description);return RedirectResponse("/campaigns",303)
+
+@app.post("/company/{company_id}/draft")
+def create_company_draft(company_id:int,contact_id:str=Form(""),subject:str=Form(""),context:str=Form("")):
+ with connect() as c:
+  company=c.execute("SELECT * FROM companies WHERE id=?",(company_id,)).fetchone()
+  if not company:raise HTTPException(404,"Company not found")
+  contact=None
+  if contact_id.strip():contact=c.execute("SELECT * FROM contacts WHERE id=? AND company_id=?",(int(contact_id),company_id)).fetchone()
+  if contact and contact["email"] and is_suppressed(contact["email"]):raise HTTPException(400,"Address is suppressed.")
+ prompt=f"Write a concise, truthful first-contact email draft. Do not invent facts or claim prior contact. Business: {company['name']}. Website: {company['website']}. Industry: {company['industry']}. Location: {company['location']}. Notes: {company['notes']}. Contact: {dict(contact) if contact else 'not specified'}. Sender offer/context: {context}. Include a clear opt-out line. Return subject on first line, then a blank line, then body."
+ try:
+  answer=ask_ai(prompt,system="You draft compliant, truthful business correspondence. Never fabricate facts, personal relationships, or consent.")
+ except Exception as e:raise HTTPException(400,f"AI draft unavailable: {e}")
+ lines=answer.splitlines();sub=subject or (lines[0].replace("Subject:","").strip() if lines else "Introduction")
+ body="\n".join(lines[2:] if len(lines)>2 and not lines[1].strip() else lines[1:]).strip()
+ add_draft(body,company_id,int(contact_id) if contact_id.strip() and contact else None,subject=sub)
+ return RedirectResponse("/drafts",303)
+
 @app.get("/drafts",response_class=HTMLResponse)
 def drafts_page():
- with connect() as c: rows=[dict(r) for r in c.execute("SELECT * FROM drafts ORDER BY id DESC")]
- body="".join(f"<section><b>{r['subject'] or 'Message draft'}</b><p>{r['body']}</p><small>Status: {r['status']}</small></section>" for r in rows) or "<p class='muted'>No drafts yet.</p>"
- return shell("<h1>Drafts</h1>"+body)
+ rows=list_drafts();body=""
+ for r in rows:
+  body+=f"<section><b>{esc(r['subject'] or 'Message draft')}</b><p class='muted'>To: {esc(r['contact_email'] or 'No contact linked')} · {esc(r['company_name'] or 'No company')} · Status: {esc(r['status'])}</p><pre style='white-space:pre-wrap;font:inherit'>{esc(r['body'])}</pre>"
+  if r["status"]=="draft":body+=f"<form class='inline' method='post' action='/drafts/{r['id']}/approve'><button>Mark approved (does not send)</button></form><form class='inline' method='post' action='/drafts/{r['id']}/reject'><button class='secondary'>Reject</button></form>"
+  body+="</section>"
+ return shell("<h1>Outbox / Drafts</h1><p class='warning'>Approval is only a local review state. Sending is disabled; no email will be transmitted.</p>"+(body or "<p class='muted'>No drafts yet. Open a company to create one.</p>"))
+@app.post("/drafts/{draft_id}/approve")
+def approve_draft(draft_id:int):
+ set_draft_status(draft_id,"approved");return RedirectResponse("/drafts",303)
+@app.post("/drafts/{draft_id}/reject")
+def reject_draft(draft_id:int):
+ set_draft_status(draft_id,"rejected");return RedirectResponse("/drafts",303)
+
+@app.get("/activity",response_class=HTMLResponse)
+def activity_page():
+ rows=list_activity();body="".join(f"<tr><td>{esc(x['created_at'])}</td><td>{esc(x['event'])}</td><td>{esc(x['details'])}</td></tr>" for x in rows)
+ return shell("<h1>Activity</h1><table><tr><th>Time</th><th>Event</th><th>Details</th></tr>"+body+"</table>")
+
+@app.get("/settings",response_class=HTMLResponse)
+def settings_page():
+ return shell("""<h1>Settings</h1><section><h2>AI provider</h2><p>Configure in the private .env file. Supported: OpenAI-compatible chat completions, Anthropic Messages API and Ollama. Local Ollama can run without API fees but requires local hardware and a downloaded model.</p><p>Variables: OPENPROSPECT_AI_PROVIDER, OPENPROSPECT_AI_MODEL, OPENPROSPECT_AI_API_KEY, OPENPROSPECT_AI_BASE_URL.</p><p>Never paste API keys into GitHub or share them in chat.</p></section><section><h2>Suppression list</h2><form method='post' action='/settings/suppressions'><input name='value' placeholder='Email address or domain' required><input name='reason' placeholder='Reason'><button>Add suppression</button></form><p class='muted'>The app checks exact email suppressions before draft creation. No delivery is enabled.</p></section><section><h2>Privacy and compliance</h2><p>Use only data you are lawfully allowed to process. Record the source of contact information, respect opt-outs and applicable marketing laws, and check provider terms. A public email address is not automatically consent to marketing.</p></section>""")
+@app.post("/settings/suppressions")
+def suppress_route(value:str=Form(...),reason:str=Form("")):
+ add_suppression(value,reason);return RedirectResponse("/settings",303)
+
+@app.get("/export/companies.csv")
+def export_companies():
+ rows=list_companies(100000);buf=io.StringIO();w=csv.DictWriter(buf,fieldnames=["id","name","website","industry","location","notes","source","source_url"]);w.writeheader()
+ for r in rows:w.writerow({k:r.get(k,"") for k in w.fieldnames})
+ return StreamingResponse(iter([buf.getvalue()]),media_type="text/csv",headers={"Content-Disposition":"attachment; filename=openprospect-companies.csv"})
+@app.get("/export/contacts.csv")
+def export_contacts():
+ rows=list_contacts(100000);buf=io.StringIO();fields=["id","company_id","company_name","name","title","email","phone","source_url","email_status","notes"];w=csv.DictWriter(buf,fieldnames=fields);w.writeheader()
+ for r in rows:w.writerow({k:r.get(k,"") for k in fields})
+ return StreamingResponse(iter([buf.getvalue()]),media_type="text/csv",headers={"Content-Disposition":"attachment; filename=openprospect-contacts.csv"})
+
+@app.get("/api/companies")
+def api_companies():return {"companies":list_companies(1000)}
+@app.post("/api/companies")
+def api_add_company(payload:dict):
+ if not payload.get("name"):raise HTTPException(400,"name is required")
+ return {"id":add_company(payload["name"],payload.get("website",""),payload.get("industry",""),payload.get("location",""),payload.get("notes",""),"api"),"ok":True}
 @app.post("/api/ai")
 def ai_chat(payload:dict):
- try:return {"response":ask_ai(str(payload.get("prompt","")))}
+ prompt=str(payload.get("prompt","")).strip()
+ if not prompt:raise HTTPException(400,"prompt is required")
+ try:return {"response":ask_ai(prompt)}
  except Exception as e:raise HTTPException(400,str(e))
