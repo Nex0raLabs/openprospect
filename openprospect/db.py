@@ -26,7 +26,8 @@ def connect():
     CREATE TABLE IF NOT EXISTS contacts(
       id INTEGER PRIMARY KEY AUTOINCREMENT,company_id INTEGER NOT NULL,name TEXT DEFAULT '',
       title TEXT DEFAULT '',email TEXT DEFAULT '',phone TEXT DEFAULT '',source_url TEXT DEFAULT '',
-      email_status TEXT DEFAULT 'unknown',notes TEXT DEFAULT '',created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      email_status TEXT DEFAULT 'unknown',email_verification_reason TEXT DEFAULT '',verified_at TEXT DEFAULT '',
+      notes TEXT DEFAULT '',created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS campaigns(
       id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,description TEXT DEFAULT '',
@@ -55,6 +56,10 @@ def connect():
     for name in ("phone", "email", "socials"):
         if name not in columns:
             c.execute(f"ALTER TABLE companies ADD COLUMN {name} TEXT DEFAULT ''")
+    contact_columns = {row["name"] for row in c.execute("PRAGMA table_info(contacts)")}
+    for name in ("email_verification_reason", "verified_at"):
+        if name not in contact_columns:
+            c.execute(f"ALTER TABLE contacts ADD COLUMN {name} TEXT DEFAULT ''")
     return c
 
 
@@ -212,3 +217,14 @@ def list_observations(limit=500):
             "JOIN companies ON companies.id=observations.company_id "
             "ORDER BY observations.id DESC LIMIT ?", (limit,)
         )]
+
+
+def set_contact_email_status(contact_id, status, reason=""):
+    if status not in {"unknown", "unverified", "verified", "risky", "guess", "invalid"}:
+        raise ValueError("Invalid email verification status.")
+    with connect() as c:
+        c.execute(
+            "UPDATE contacts SET email_status=?,email_verification_reason=?,"
+            "verified_at=CASE WHEN ?='verified' THEN CURRENT_TIMESTAMP ELSE '' END WHERE id=?",
+            (status, reason, status, contact_id),
+        )
