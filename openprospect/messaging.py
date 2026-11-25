@@ -71,9 +71,9 @@ def sync_imap(limit:int=50):
             elif msg.get_content_type()=="text/plain":
                 try:text=msg.get_content()
                 except Exception:pass
-            with connect() as c:
-                cur=c.execute("INSERT OR IGNORE INTO conversations(channel,external_id,contact_address,subject,last_message,unread) VALUES('email',?,?,?,?,1)",(mid or str(uuid.uuid4()),sender,subject,text[:12000]))
-                if cur.rowcount: added+=1
+            from .conversations import add_message
+            add_message("email", mid or str(uuid.uuid4()), sender, subject, text[:12000] or subject, "inbound")
+            added+=1
             if any(term in (subject+" "+text).lower() for term in ("unsubscribe","stop emailing","remove me","opt out")):
                 with connect() as c:c.execute("INSERT OR IGNORE INTO suppressions(value,reason) VALUES(?,?)",(sender,"Email opt-out detected in inbound reply"))
                 log("email_optout_detected",sender)
