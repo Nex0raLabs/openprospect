@@ -20,7 +20,7 @@ DISPOSABLE_DOMAINS = {
     "trashmail.com", "dispostable.com", "fakeinbox.com", "sharklasers.com",
     "maildrop.cc", "minuteinbox.com", "mohmal.com", "emailondeck.com",
 }
-EMAIL_RE = re.compile(r"^[A-Z0-9.!#$%&'*+/=?^_{}|~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$", re.I)
+EMAIL_RE = re.compile(r"^[A-Z0-9.!#$%&'*+/=?^_{}|~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$", re.I)
 
 
 def _smtp_check(mx_host: str, address: str, timeout: float = 5.0) -> dict[str, Any]:
