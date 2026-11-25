@@ -145,7 +145,38 @@ def activity_page():
 
 @app.get("/settings",response_class=HTMLResponse)
 def settings_page():
- return shell("""<h1>Settings</h1><section><h2>AI provider</h2><p>Configure in the private .env file. Supported: OpenAI-compatible chat completions, Anthropic Messages API and Ollama. Local Ollama can run without API fees but requires local hardware and a downloaded model.</p><p>Variables: OPENPROSPECT_AI_PROVIDER, OPENPROSPECT_AI_MODEL, OPENPROSPECT_AI_API_KEY, OPENPROSPECT_AI_BASE_URL.</p><p>Never paste API keys into GitHub or share them in chat.</p></section><section><h2>Suppression list</h2><form method='post' action='/settings/suppressions'><input name='value' placeholder='Email address or domain' required><input name='reason' placeholder='Reason'><button>Add suppression</button></form><p class='muted'>The app checks exact email suppressions before draft creation. No delivery is enabled.</p></section><section><h2>Privacy and compliance</h2><p>Use only data you are lawfully allowed to process. Record the source of contact information, respect opt-outs and applicable marketing laws, and check provider terms. A public email address is not automatically consent to marketing.</p></section>""")
+ from .ai import provider_name, provider_status
+ selected=provider_name()
+ status=provider_status()
+ options="".join(f"<option value='{p}' {'selected' if selected==p else ''}>{label}</option>" for p,label in [("ollama","Ollama (local)"),("claude-code","Claude Code CLI"),("codex","Codex CLI"),("openai-compatible","OpenAI-compatible endpoint"),("anthropic","Anthropic API")])
+ return shell(f"""<h1>Settings</h1><section><h2>AI provider</h2>
+ <p>Status: <b>{esc(status['status'])}</b> · Selected: {esc(selected)}</p><p class='muted'>{esc(status['fix'])}</p>
+ <form method='post' action='/settings/ai'><label>Provider</label><select name='provider'>{options}</select>
+ <label>Model (Ollama / API providers)</label><input name='model' placeholder='llama3.2 or model name'>
+ <label>Base URL (API providers)</label><input name='base_url' placeholder='http://localhost:11434/v1'>
+ <button>Save provider selection</button></form>
+ <form method='post' action='/settings/test-ai'><button class='secondary'>Test connection</button></form>
+ <p>Claude Code and Codex use your existing signed-in CLI subscription. Ollama runs locally. API-compatible and Anthropic providers may incur usage charges.</p>
+ <p>API keys stay in your private .env file and are never stored by this form. Variables: OPENPROSPECT_AI_API_KEY.</p></section>
+ <section><h2>Suppression list</h2><form method='post' action='/settings/suppressions'><input name='value' placeholder='Email address or domain' required><input name='reason' placeholder='Reason'><button>Add suppression</button></form><p class='muted'>The app checks exact email suppressions before draft creation. No delivery is enabled.</p></section>
+ <section><h2>Privacy and compliance</h2><p>Use only data you are lawfully allowed to process. Record the source of contact information, respect opt-outs and applicable marketing laws, and check provider terms. A public email address is not automatically consent to marketing.</p></section>""")
+
+@app.post("/settings/ai")
+def save_ai_settings(provider:str=Form(...),model:str=Form(""),base_url:str=Form("")):
+ from .ai import save_provider_settings
+ try: save_provider_settings(provider,model,base_url)
+ except ValueError as exc: raise HTTPException(400,str(exc))
+ return RedirectResponse("/settings",303)
+
+@app.post("/settings/test-ai",response_class=HTMLResponse)
+def test_ai_provider():
+ from .ai import test_ai_connection
+ try:
+  result=test_ai_connection()
+  return shell(f"<h1>AI connection test</h1><p class='tag'>Connected: {esc(result['provider'])}</p><pre>{esc(result['response'])}</pre><a href='/settings'>Back to settings</a>")
+ except Exception as exc:
+  return shell(f"<h1>AI connection test</h1><p class='warning'>Not connected</p><p>{esc(exc)}</p><a href='/settings'>Back to settings</a>")
+
 @app.post("/settings/suppressions")
 def suppress_route(value:str=Form(...),reason:str=Form("")):
  add_suppression(value,reason);return RedirectResponse("/settings",303)
