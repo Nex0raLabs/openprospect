@@ -54,7 +54,7 @@ def provider_status() -> dict[str, Any]:
         return {"provider": provider, "connected": False, "status": "Not connected", "fix": f"Start Ollama, pull {model}, then test the connection at {base}."}
     if provider in {"anthropic", "openai-compatible"}:
         key = os.getenv("OPENPROSPECT_AI_API_KEY", "")
-        base = os.getenv("OPENPROSPECT_AI_BASE_URL", "")
+        base = _setting("base_url", "OPENPROSPECT_AI_BASE_URL", "")
         return {"provider": provider, "connected": bool(key and base), "status": "Configured" if key and base else "Not connected", "fix": "Set the provider URL, model and API key in your private .env file. Provider usage may cost money."}
     return {"provider": provider, "connected": False, "status": "Not connected", "fix": "Choose ollama, claude-code, codex, anthropic or openai-compatible."}
 
@@ -98,7 +98,7 @@ def ask_ai(prompt: str, system: str = "You are a helpful business research and o
         model = model or "llama3.2"
 
     if provider == "anthropic":
-        base = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+        base = _setting("base_url", "ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
         model = model or "claude-3-5-haiku-latest"
         if not key:
             raise RuntimeError("Set OPENPROSPECT_AI_API_KEY for the Anthropic provider.")
