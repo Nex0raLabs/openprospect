@@ -1,6 +1,6 @@
 """Real SMTP delivery and IMAP synchronization. Credentials are read only from environment variables."""
 from __future__ import annotations
-import email, imaplib, os, smtplib, ssl, uuid
+import email, imaplib, os, smtplib, ssl, uuid, datetime
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from .db import connect, is_suppressed, log
