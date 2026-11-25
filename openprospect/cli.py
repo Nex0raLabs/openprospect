@@ -9,8 +9,9 @@ from .training import train_website
 def main():
     load_dotenv()
     parser = argparse.ArgumentParser(prog="openprospect")
-    parser.add_argument("command", nargs="?", default="dashboard", choices=["dashboard", "status", "companies", "mcp", "train"])
+    parser.add_argument("command", nargs="?", default="dashboard", choices=["dashboard", "status", "companies", "mcp", "train", "run"])
     parser.add_argument("url", nargs="?")
+    parser.add_argument("--limit", type=int, default=5, help="Maximum companies to profile in one run cycle")
     args = parser.parse_args()
     if args.command == "dashboard":
         host = os.getenv("OPENPROSPECT_HOST", "127.0.0.1")
@@ -35,6 +36,12 @@ def main():
     elif args.command == "mcp":
         from .mcp_server import main as run_mcp
         run_mcp()
+    elif args.command == "run":
+        from .automation import run_once
+        result = run_once(args.limit)
+        print("Companies profiled:", result.get("processed", 0))
+        print("Errors:", len(result.get("errors", [])))
+        print("Outbound messaging:", "disabled; approval required")
     elif args.command == "train":
         if not args.url:
             parser.error("train requires a website URL, e.g. openprospect train https://example.com")
