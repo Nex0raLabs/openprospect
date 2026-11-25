@@ -4,10 +4,10 @@ from fastapi import FastAPI,Form,HTTPException,File,UploadFile
 from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse
 from .db import (add_company,list_companies,connect,add_contact,list_contacts,
  add_campaign,list_campaigns,add_draft,list_drafts,set_draft_status,
- add_suppression,list_activity,is_suppressed,log,find_company_duplicate,save_company_observations)
+ add_suppression,list_activity,is_suppressed,log,find_company_duplicate,save_company_observations,set_contact_email_status)
 from .ai import ask_ai
 from .discovery import discover_osm
-from .profiling import profile_website
+from .profiling import profile_website\nfrom .verification import verify_email
 
 app=FastAPI(title="OpenProspect",version="0.2.0")
 CSS="""<style>
@@ -73,7 +73,7 @@ def company_detail(company_id:int):
  profile=f"<section><h2>Website profile</h2><form method='post' action='/company/{company_id}/profile'><button>Read public website</button></form><p class='muted'>Fetches the public homepage only. Respect robots.txt, site terms and rate limits; this is not a verification of contact consent.</p></section>" if x["website"] else ""
  cs="".join(f"<tr><td>{esc(c['name'])}</td><td>{esc(c['title'])}</td><td>{esc(c['email'])}</td><td>{esc(c['email_status'])}</td></tr>" for c in contacts)
  website_link=('<a href="'+esc(x["website"])+'" rel="noreferrer">'+esc(x["website"])+'</a>') if x["website"].startswith(("http://","https://")) else esc(x["website"]) or "Not recorded"
- return shell(f"<h1>{esc(x['name'])}</h1><p class='muted'>{esc(x['industry'])} · {esc(x['location'])} · Source: {esc(x['source'])}</p><section><p>Website: {website_link}</p><p>Public phone: {esc(x.get('phone','')) or 'Not recorded'} · Public email: {esc(x.get('email','')) or 'Not recorded'}</p><p>Socials: {esc(x.get('socials','')) or 'Not recorded'}</p><p>{esc(x['notes'])}</p><small>Source record: {esc(x['source_url'])}</small></section>{profile}<section><h2>Add contact</h2><form method='post' action='/company/{company_id}/contacts'><input name='name' placeholder='Contact name'><input name='title' placeholder='Role / title'><input name='email' placeholder='Email (only if lawfully obtained)'><input name='phone' placeholder='Phone'><input name='source_url' placeholder='Public source URL'><select name='email_status'><option>unknown</option><option>unverified</option><option>verified</option><option>invalid</option></select><textarea name='notes' placeholder='Notes'></textarea><button>Save contact</button></form></section><section><h2>Contacts</h2><table><tr><th>Name</th><th>Role</th><th>Email</th><th>Status</th></tr>{cs}</table></section><section><h2>Create an outreach draft</h2><form method='post' action='/company/{company_id}/draft'><input name='contact_id' type='number' placeholder='Contact ID (optional)'><input name='subject' placeholder='Subject'><textarea name='context' placeholder='Your offer and relevant context'></textarea><button>Create AI draft</button></form></section>")
+ return shell(f"<h1>{esc(x['name'])}</h1><p class='muted'>{esc(x['industry'])} · {esc(x['location'])} · Source: {esc(x['source'])}</p><section><p>Website: {website_link}</p><p>Public phone: {esc(x.get('phone','')) or 'Not recorded'} · Public email: {esc(x.get('email','')) or 'Not recorded'}</p><p>Socials: {esc(x.get('socials','')) or 'Not recorded'}</p><p>{esc(x['notes'])}</p><small>Source record: {esc(x['source_url'])}</small></section>{profile}<section><h2>Add contact</h2><form method='post' action='/company/{company_id}/contacts'><input name='name' placeholder='Contact name'><input name='title' placeholder='Role / title'><input name='email' placeholder='Email (only if lawfully obtained)'><input name='phone' placeholder='Phone'><input name='source_url' placeholder='Public source URL'><select name='email_status'><option>unknown</option><option>unverified</option><option>verified</option><option>risky</option><option>guess</option><option>invalid</option></select><textarea name='notes' placeholder='Notes'></textarea><button>Save contact</button></form></section><section><h2>Contacts</h2><table><tr><th>Name</th><th>Role</th><th>Email</th><th>Status</th></tr>{cs}</table></section><section><h2>Create an outreach draft</h2><form method='post' action='/company/{company_id}/draft'><input name='contact_id' type='number' placeholder='Contact ID (optional)'><input name='subject' placeholder='Subject'><textarea name='context' placeholder='Your offer and relevant context'></textarea><button>Create AI draft</button></form></section>")
 
 @app.post("/company/{company_id}/contacts")
 def create_contact(company_id:int,name:str=Form(""),title:str=Form(""),email:str=Form(""),phone:str=Form(""),source_url:str=Form(""),email_status:str=Form("unknown"),notes:str=Form("")):
@@ -95,8 +95,17 @@ def profile_company(company_id:int):
 @app.get("/contacts",response_class=HTMLResponse)
 def contacts_page():
  rows=list_contacts()
- body="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['company_name'])}</td><td>{esc(x['title'])}</td><td>{esc(x['email'])}</td><td>{esc(x['email_status'])}</td><td><a href='/company/{x['company_id']}'>Company</a></td></tr>" for x in rows)
- return shell("<h1>Contacts</h1><p class='muted'>Contact records are manually added or sourced from public company pages. Email status is not independently verified by this release.</p><table><tr><th>Name</th><th>Company</th><th>Role</th><th>Email</th><th>Status</th><th></th></tr>"+body+"</table><p><a href='/export/contacts.csv'>Export contacts CSV</a></p><section><h2>Import contacts CSV</h2><form method='post' action='/import/contacts.csv' enctype='multipart/form-data'><input type='file' name='file' accept='.csv,text/csv' required><button>Import contacts</button></form></section>")
+ body="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['company_name'])}</td><td>{esc(x['title'])}</td><td>{esc(x['email'])}</td><td>{esc(x['email_status'])}<br><small>{esc(x.get('email_verification_reason',''))}</small></td><td><form method='post' action='/contact/{x['id']}/verify'><button>Verify</button></form></td><td><a href='/company/{x['company_id']}'>Company</a></td></tr>" for x in rows)
+ return shell("<h1>Contacts</h1><p class='muted'>Use Verify for syntax, disposable-domain, MX and (where network policy allows) SMTP RCPT checks. Only verified non-catch-all addresses are deliverable.</p><table><tr><th>Name</th><th>Company</th><th>Role</th><th>Email</th><th>Status / reason</th><th>Check</th><th></th></tr>"+body+"</table><p><a href='/export/contacts.csv'>Export contacts CSV</a></p><section><h2>Import contacts CSV</h2><form method='post' action='/import/contacts.csv' enctype='multipart/form-data'><input type='file' name='file' accept='.csv,text/csv' required><button>Import contacts</button></form></section>")
+
+@app.post("/contact/{contact_id}/verify",response_class=HTMLResponse)
+def verify_contact(contact_id:int):
+ with connect() as conn: row=conn.execute("SELECT * FROM contacts WHERE id=?",(contact_id,)).fetchone()
+ if not row: raise HTTPException(404,"Contact not found.")
+ if not row["email"]: raise HTTPException(400,"This contact has no email address.")
+ result=verify_email(row["email"],is_guess=row["email_status"]=="guess")
+ set_contact_email_status(contact_id,result["status"],result["reason"])
+ return shell(f"<h1>Email verification</h1><p><b>{esc(result['address'])}</b></p><p>Status: <b>{esc(result['status'])}</b></p><p>{esc(result['reason'])}</p><p>MX found: {result['mx_found']} · Role account: {result['role_account']} · Catch-all: {result['catch_all']}</p><a href='/contacts'>Back to contacts</a>")
 
 @app.get("/campaigns",response_class=HTMLResponse)
 def campaigns_page():
@@ -222,7 +231,7 @@ def export_companies():
  return StreamingResponse(iter([buf.getvalue()]),media_type="text/csv",headers={"Content-Disposition":"attachment; filename=openprospect-companies.csv"})
 @app.get("/export/contacts.csv")
 def export_contacts():
- rows=list_contacts(100000);buf=io.StringIO();fields=["id","company_id","company_name","name","title","email","phone","source_url","email_status","notes"];w=csv.DictWriter(buf,fieldnames=fields);w.writeheader()
+ rows=list_contacts(100000);buf=io.StringIO();fields=["id","company_id","company_name","name","title","email","phone","source_url","email_status","email_verification_reason","verified_at","notes"];w=csv.DictWriter(buf,fieldnames=fields);w.writeheader()
  for r in rows:w.writerow({k:r.get(k,"") for k in fields})
  return StreamingResponse(iter([buf.getvalue()]),media_type="text/csv",headers={"Content-Disposition":"attachment; filename=openprospect-contacts.csv"})
 
