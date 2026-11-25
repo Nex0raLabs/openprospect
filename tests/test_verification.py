@@ -83,3 +83,13 @@ def test_contact_verify_action_persists_result(monkeypatch, tmp_path):
     with connect() as conn:
         row = conn.execute("SELECT email_status FROM contacts WHERE id=?", (contact_id,)).fetchone()
     assert row["email_status"] == "verified"
+
+
+def test_manual_import_cannot_mark_contact_verified(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENPROSPECT_HOME", str(tmp_path))
+    from openprospect.db import add_company, add_contact, connect
+    company_id = add_company("Manual Status Co")
+    contact_id = add_contact(company_id, email="person@example.test", email_status="verified")
+    with connect() as conn:
+        row = conn.execute("SELECT email_status FROM contacts WHERE id=?", (contact_id,)).fetchone()
+    assert row["email_status"] == "unverified"
