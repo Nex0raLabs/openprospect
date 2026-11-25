@@ -11,3 +11,14 @@ venv/
 .coverage
 htmlcov/
 .DS_Store
+
+# Local application state and credentials
+.openprospect/
+data/
+*.token
+*.session
+*.session-*
+*.pem
+*.key
+credentials.json
+client_secret*.json
