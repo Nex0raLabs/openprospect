@@ -16,7 +16,8 @@ OpenProspect is an open-source application for finding businesses from public ma
 | Website research | Fetches public homepage, extracts title, description, visible text, email and phone strings |
 | Contacts | Manually record contacts, role, source URL and email status |
 | Campaigns | Create and organise campaign records |
-| Product training | `openprospect train <url>` reads the public site and saves an editable local company profile; Train screen available in the dashboard |\n| AI drafts | Ollama locally, Claude Code CLI, Codex CLI, or optional Anthropic / OpenAI-compatible endpoints |
+| Product training | `openprospect train <url>` reads the public site and saves an editable local company profile; Train screen available in the dashboard |
+| AI drafts | Ollama locally, Claude Code CLI, Codex CLI, or optional Anthropic / OpenAI-compatible endpoints |
 | Outbox | Review, approve or reject drafts; approval never sends |
 | Suppression list | Store opt-out addresses and block draft creation for exact suppressed email |
 | Exports | Company and contact CSV |
@@ -51,6 +52,10 @@ openprospect dashboard
 
 The dashboard binds to `127.0.0.1` by default and stores data in `%USERPROFILE%\.openprospect\openprospect.db`. Keep it local; do not expose the development server directly to the public internet. Stop it with `Ctrl+C`.
 
+## Train OpenProspect on your product
+
+Run `openprospect train https://your-company.com` to read the homepage and up to two relevant same-site pages, subject to `robots.txt`. It saves `company-training.json` under your local OpenProspect data folder. Open the dashboard **Train** screen to edit the ICP, offer, banned phrases, sender signature, language and default CTA. Extraction is heuristic and must be reviewed; it does not invent missing pricing or proof.
+
 ## AI setup
 
 ### Local and free with Ollama
@@ -65,6 +70,10 @@ OPENPROSPECT_AI_PROVIDER=ollama
 OPENPROSPECT_AI_MODEL=llama3.2
 OPENPROSPECT_AI_BASE_URL=http://localhost:11434/v1
 ```
+
+### Subscription CLI providers
+
+Choose **Claude Code CLI** or **Codex CLI** in Settings to use a CLI you have already installed and signed in to. These options do not require an API key. Use **Test connection** to run a real provider check. Missing CLIs are shown as **Not connected**.
 
 ### Optional hosted providers
 
@@ -116,6 +125,7 @@ The **Company** page can fetch the public homepage and show text and possible co
 
 ```cmd
 openprospect dashboard
+openprospect train https://your-company.com
 openprospect status
 openprospect companies
 openprospect mcp
