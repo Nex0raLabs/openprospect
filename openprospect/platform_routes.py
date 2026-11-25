@@ -85,6 +85,11 @@ def unsubscribe(email:str):
     add_suppression(email,"Recipient used unsubscribe link")
     return HTMLResponse("<h1>Unsubscribed</h1><p>This address has been added to the OpenProspect suppression list.</p>")
 
+@router.post("/unsubscribe",response_class=HTMLResponse)
+def unsubscribe_one_click(email:str=Form(...)):
+    add_suppression(email,"Recipient used one-click email unsubscribe")
+    return HTMLResponse("<h1>Unsubscribed</h1><p>This address has been added to the OpenProspect suppression list.</p>")
+
 @router.post("/api/whatsapp/inbound")
 def whatsapp_inbound(payload:dict):
     import os, hmac
