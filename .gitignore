@@ -25,3 +25,7 @@ client_secret*.json
 dashboard-token
 whatsapp-auth/
 auth_info_baileys/
+
+# Optional WhatsApp sidecar runtime state
+node_modules/
+whatsapp-sidecar/auth/
