@@ -22,3 +22,6 @@ data/
 *.key
 credentials.json
 client_secret*.json
+dashboard-token
+whatsapp-auth/
+auth_info_baileys/
