@@ -79,7 +79,7 @@ def install_security(app: FastAPI) -> None:
             response.delete_cookie("openprospect_session", path="/", samesite="strict")
             return response
 
-        if request.url.path == "/unsubscribe" and request.method == "GET":
+        if request.url.path == "/unsubscribe" and request.method in {"GET", "POST"}:
             return await call_next(request)
 
         if request.url.path == "/api/whatsapp/inbound" and request.method == "POST":
