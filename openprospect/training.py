@@ -199,11 +199,11 @@ def load_training(home: str | Path | None = None) -> dict[str, Any]:
 def save_training(payload: dict[str, Any], home: str | Path | None = None) -> dict[str, Any]:
     allowed = {"icp", "offer", "banned_phrases", "signature", "language", "default_cta"}
     current = load_training(home)
+    if not current:
+        raise ValueError("Train on your website before editing the company profile.")
     for key in allowed:
         if key in payload:
             current[key] = payload[key]
-    if not current:
-        raise ValueError("Train on your website before editing the company profile.")
     target = (Path(home) if home else Path.home() / ".openprospect") / "company-training.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(current, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
