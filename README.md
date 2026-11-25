@@ -16,7 +16,7 @@ OpenProspect is an open-source application for finding businesses from public ma
 | Website research | Fetches public homepage, extracts title, description, visible text, email and phone strings |
 | Contacts | Manually record contacts, role, source URL and email status |
 | Campaigns | Create and organise campaign records |
-| AI drafts | Drafts with Ollama locally or optional Anthropic / OpenAI-compatible endpoints |
+| Product training | `openprospect train <url>` reads the public site and saves an editable local company profile; Train screen available in the dashboard |\n| AI drafts | Ollama locally, Claude Code CLI, Codex CLI, or optional Anthropic / OpenAI-compatible endpoints |
 | Outbox | Review, approve or reject drafts; approval never sends |
 | Suppression list | Store opt-out addresses and block draft creation for exact suppressed email |
 | Exports | Company and contact CSV |
