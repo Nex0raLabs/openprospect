@@ -44,10 +44,10 @@ def provider_status() -> dict[str, Any]:
     provider = provider_name()
     if provider in {"claude-code", "claude"}:
         command = shutil.which("claude")
-        return {"provider": "claude-code", "connected": bool(command), "status": "Ready" if command else "Not connected", "fix": "Install Claude Code CLI and sign in with your existing subscription."}
+        return {"provider": "claude-code", "connected": False, "status": "Installed; not yet tested" if command else "Not connected", "fix": "Install Claude Code CLI and sign in with your existing subscription."}
     if provider in {"codex", "codex-cli"}:
         command = shutil.which("codex")
-        return {"provider": "codex", "connected": bool(command), "status": "Ready" if command else "Not connected", "fix": "Install Codex CLI and sign in with your existing ChatGPT account."}
+        return {"provider": "codex", "connected": False, "status": "Installed; not yet tested" if command else "Not connected", "fix": "Install Codex CLI and sign in with your existing ChatGPT account."}
     if provider == "ollama":
         base = os.getenv("OPENPROSPECT_AI_BASE_URL", "http://localhost:11434/v1").rstrip("/")
         model = os.getenv("OPENPROSPECT_AI_MODEL", "llama3.2")
@@ -55,7 +55,7 @@ def provider_status() -> dict[str, Any]:
     if provider in {"anthropic", "openai-compatible"}:
         key = os.getenv("OPENPROSPECT_AI_API_KEY", "")
         base = _setting("base_url", "OPENPROSPECT_AI_BASE_URL", "")
-        return {"provider": provider, "connected": bool(key and base), "status": "Configured" if key and base else "Not connected", "fix": "Set the provider URL, model and API key in your private .env file. Provider usage may cost money."}
+        return {"provider": provider, "connected": False, "status": "Configured; not yet tested" if key and base else "Not connected", "fix": "Set the provider URL, model and API key in your private .env file. Provider usage may cost money."}
     return {"provider": provider, "connected": False, "status": "Not connected", "fix": "Choose ollama, claude-code, codex, anthropic or openai-compatible."}
 
 
