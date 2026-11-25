@@ -151,7 +151,8 @@ def drafts_page():
  rows=list_drafts();body=""
  for r in rows:
   body+=f"<section><b>{esc(r['subject'] or 'Message draft')}</b><p class='muted'>To: {esc(r['contact_email'] or 'No contact linked')} · {esc(r['company_name'] or 'No company')} · Status: {esc(r['status'])}</p><pre style='white-space:pre-wrap;font:inherit'>{esc(r['body'])}</pre>"
-  if r["status"]=="draft":body+=f"<form class='inline' method='post' action='/drafts/{r['id']}/approve'><button>Approve draft</button></form><form class='inline' method='post' action='/drafts/{r['id']}/reject'><button class='secondary'>Reject</button></form>"\n  if r["status"]=="approved" and r.get("contact_email"):body+=f"<form class='inline' method='post' action='/drafts/{r['id']}/send' onsubmit='return confirm(\"Send this email now?\")'><button>Send approved email now</button></form>"
+  if r["status"]=="draft":body+=f"<form class='inline' method='post' action='/drafts/{r['id']}/approve'><button>Approve draft</button></form><form class='inline' method='post' action='/drafts/{r['id']}/reject'><button class='secondary'>Reject</button></form>"
+  if r["status"]=="approved" and r.get("contact_email"):body+=f"<form class='inline' method='post' action='/drafts/{r['id']}/send' onsubmit='return confirm(\"Send this email now?\")'><button>Send approved email now</button></form>"
   body+="</section>"
  return shell("<h1>Outbox / Drafts</h1><p class='warning'>Send only after reviewing the recipient and message. Sending requires configured SMTP, a verified non-catch-all recipient and a public HTTPS unsubscribe URL.</p>"+(body or "<p class='muted'>No drafts yet. Open a company to create one.</p>"))
 @app.post("/drafts/{draft_id}/approve")
