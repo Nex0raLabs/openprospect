@@ -5,11 +5,39 @@ import os
 import shutil
 import subprocess
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 
+def _local_settings() -> dict[str, Any]:
+    from .db import db_path
+    path = db_path().parent / "ai-settings.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_provider_settings(provider: str, model: str = "", base_url: str = "") -> dict[str, Any]:
+    provider = provider.strip().lower()
+    allowed = {"ollama", "claude-code", "codex", "openai-compatible", "anthropic"}
+    if provider not in allowed:
+        raise ValueError("Choose a supported AI provider.")
+    from .db import db_path
+    path = db_path().parent / "ai-settings.json"
+    settings = {"provider": provider, "model": model.strip(), "base_url": base_url.strip()}
+    path.write_text(json.dumps(settings, indent=2) + "\\n", encoding="utf-8")
+    return settings
+
+
+def _setting(name: str, env_name: str, default: str = "") -> str:
+    return str(_local_settings().get(name) or os.getenv(env_name, default))
+
+
 def provider_name() -> str:
-    return os.getenv("OPENPROSPECT_AI_PROVIDER", "ollama").strip().lower()
+    return _setting("provider", "OPENPROSPECT_AI_PROVIDER", "ollama").strip().lower()
 
 
 def provider_status() -> dict[str, Any]:
