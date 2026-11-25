@@ -55,7 +55,7 @@ def install_security(app: FastAPI) -> None:
     @app.middleware("http")
     async def local_dashboard_guard(request: Request, call_next):
         host = request.url.hostname or ""
-        if host not in {"127.0.0.1", "::1", "localhost", "testserver"}:
+        if host not in {"127.0.0.1", "::1", "localhost"}:
             return JSONResponse({"detail": "OpenProspect only accepts local connections."}, status_code=403)
 
         if request.url.path == "/auth/exchange" and request.method == "POST":
