@@ -35,7 +35,7 @@ def train_page():
     <section><h2>Edit your sales profile</h2><form method="post" action="/train/save">
     <label>Ideal customer profile</label><textarea name="icp">{_e(data.get("icp",""))}</textarea>
     <label>Offer</label><textarea name="offer">{_e(data.get("offer",""))}</textarea>
-    <label>Banned phrases (one per line)</label><textarea name="banned_phrases">{_e("\n".join(data.get("banned_phrases",[])))}</textarea>
+    <label>Banned phrases (one per line)</label><textarea name="banned_phrases">{_e(banned_phrases)}</textarea>
     <label>Sender signature</label><textarea name="signature">{_e(data.get("signature",""))}</textarea>
     <label>Language</label><input name="language" value="{_e(data.get("language","English"))}">
     <label>Default call to action</label><input name="default_cta" value="{_e(data.get("default_cta",""))}">
