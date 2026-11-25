@@ -1,4 +1,5 @@
 // Optional unofficial WhatsApp Web bridge. Use only with an account you control.
+require('dotenv').config();
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
