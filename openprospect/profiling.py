@@ -74,7 +74,9 @@ def load_signal_rules() -> dict[str, dict[str, Any]]:
         try:
             saved = json.loads(path.read_text(encoding="utf-8"))
             for key, value in saved.items():
-                if key in rules and isinstance(value, dict):
+                if key == "_custom_rules" and isinstance(value, list):
+                    rules["_custom_rules"] = value
+                elif key in rules and isinstance(value, dict):
                     rules[key].update(value)
         except (OSError, ValueError):
             pass
@@ -85,7 +87,21 @@ def save_signal_rules(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
     from .db import db_path
     rules = load_signal_rules()
     for key, value in payload.items():
-        if key in rules and isinstance(value, dict):
+        if key == "_custom_rules" and isinstance(value, list):
+            custom = []
+            for item in value[:30]:
+                if not isinstance(item, dict):
+                    continue
+                code = re.sub(r"[^A-Z0-9_]", "", str(item.get("code", "")).upper())[:40]
+                keywords = [str(word).strip().lower() for word in item.get("keywords", []) if str(word).strip()][:20]
+                if code and keywords and code not in DEFAULT_RULES:
+                    custom.append({
+                        "code": code, "label": str(item.get("label", code.replace("_", " ").title()))[:120],
+                        "keywords": keywords, "weight": max(0, min(30, int(item.get("weight", 5)))),
+                        "enabled": bool(item.get("enabled", True)),
+                    })
+            rules["_custom_rules"] = custom
+        elif key in rules and isinstance(value, dict):
             if "enabled" in value:
                 rules[key]["enabled"] = bool(value["enabled"])
             if "weight" in value:
@@ -193,6 +209,13 @@ def profile_website(url: str):
         signals.append(_signal("SLOW_LOAD", rules, final_url, 0.8))
     if any(word in link.lower() for link in links for word in ("career", "jobs", "work-with-us")):
         signals.append(_signal("HIRING_PAGE", rules, final_url, 0.9))
+    for custom in rules.get("_custom_rules", []):
+        if custom.get("enabled", True) and any(word in joined for word in custom.get("keywords", [])):
+            signals.append({
+                "code": custom["code"], "label": custom.get("label", custom["code"]),
+                "weight": int(custom.get("weight", 5)), "confidence": 0.7,
+                "evidence_url": final_url,
+            })
     signals = [item for item in signals if item]
     score = min(100, sum(int(item["weight"]) for item in signals))
     return {
