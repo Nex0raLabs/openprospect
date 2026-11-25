@@ -93,7 +93,10 @@ def _allowed_by_robots(url: str) -> bool:
     parser = urllib.robotparser.RobotFileParser()
     parser.set_url(robots_url)
     try:
-        _, body = _fetch(robots_url)
+        request = urllib.request.Request(robots_url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            _public_http_url(response.geturl())
+            body = response.read(256_000).decode("utf-8", "replace")
         parser.parse(body.splitlines())
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
