@@ -54,7 +54,9 @@ def provider_status() -> dict[str, Any]:
         return {"provider": provider, "connected": False, "status": "Not connected", "fix": f"Start Ollama, pull {model}, then test the connection at {base}."}
     if provider in {"anthropic", "openai-compatible"}:
         key = os.getenv("OPENPROSPECT_AI_API_KEY", "")
-        base = _setting("base_url", "OPENPROSPECT_AI_BASE_URL", "")
+        env_base = "ANTHROPIC_BASE_URL" if provider == "anthropic" else "OPENPROSPECT_AI_BASE_URL"
+        default_base = "https://api.anthropic.com" if provider == "anthropic" else "https://api.openai.com/v1"
+        base = _setting("base_url", env_base, default_base)
         return {"provider": provider, "connected": False, "status": "Configured; not yet tested" if key and base else "Not connected", "fix": "Set the provider URL, model and API key in your private .env file. Provider usage may cost money."}
     return {"provider": provider, "connected": False, "status": "Not connected", "fix": "Choose ollama, claude-code, codex, anthropic or openai-compatible."}
 
