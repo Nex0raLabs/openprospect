@@ -4,11 +4,11 @@ from fastapi import FastAPI,Form,HTTPException,File,UploadFile
 from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse
 from .db import (add_company,list_companies,connect,add_contact,list_contacts,
  add_campaign,list_campaigns,add_draft,list_drafts,set_draft_status,
- add_suppression,list_activity,is_suppressed,log,find_company_duplicate,save_company_observations,set_contact_email_status)
+ add_suppression,list_activity,is_suppressed,log,find_company_duplicate,save_company_observations,set_contact_email_status,set_contact_email)
 from .ai import ask_ai
 from .discovery import discover_osm
 from .profiling import profile_website
-from .verification import verify_email
+from .verification import verify_email,learn_email_pattern,guess_email\nfrom urllib.parse import urlsplit
 
 app=FastAPI(title="OpenProspect",version="0.2.0")
 CSS="""<style>
@@ -96,7 +96,11 @@ def profile_company(company_id:int):
 @app.get("/contacts",response_class=HTMLResponse)
 def contacts_page():
  rows=list_contacts()
- body="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['company_name'])}</td><td>{esc(x['title'])}</td><td>{esc(x['email'])}</td><td>{esc(x['email_status'])}<br><small>{esc(x.get('email_verification_reason',''))}</small></td><td><form method='post' action='/contact/{x['id']}/verify'><button>Verify</button></form></td><td><a href='/company/{x['company_id']}'>Company</a></td></tr>" for x in rows)
+ def actions(x):
+  verify=f"<form method='post' action='/contact/{x['id']}/verify'><button>Verify</button></form>" if x.get("email") else ""
+  guess=f"<form method='post' action='/contact/{x['id']}/guess'><button>Guess email</button></form>" if not x.get("email") else ""
+  return verify+guess
+ body="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['company_name'])}</td><td>{esc(x['title'])}</td><td>{esc(x['email'])}</td><td>{esc(x['email_status'])}<br><small>{esc(x.get('email_verification_reason',''))}</small></td><td>{actions(x)}</td><td><a href='/company/{x['company_id']}'>Company</a></td></tr>" for x in rows)
  return shell("<h1>Contacts</h1><p class='muted'>Use Verify for syntax, disposable-domain, MX and (where network policy allows) SMTP RCPT checks. Only verified non-catch-all addresses are deliverable.</p><table><tr><th>Name</th><th>Company</th><th>Role</th><th>Email</th><th>Status / reason</th><th>Check</th><th></th></tr>"+body+"</table><p><a href='/export/contacts.csv'>Export contacts CSV</a></p><section><h2>Import contacts CSV</h2><form method='post' action='/import/contacts.csv' enctype='multipart/form-data'><input type='file' name='file' accept='.csv,text/csv' required><button>Import contacts</button></form></section>")
 
 @app.post("/contact/{contact_id}/verify",response_class=HTMLResponse)
@@ -107,6 +111,24 @@ def verify_contact(contact_id:int):
  result=verify_email(row["email"],is_guess=row["email_status"]=="guess")
  set_contact_email_status(contact_id,result["status"],result["reason"])
  return shell(f"<h1>Email verification</h1><p><b>{esc(result['address'])}</b></p><p>Status: <b>{esc(result['status'])}</b></p><p>{esc(result['reason'])}</p><p>MX found: {result['mx_found']} · Role account: {result['role_account']} · Catch-all: {result['catch_all']}</p><a href='/contacts'>Back to contacts</a>")
+
+@app.post("/contact/{contact_id}/guess",response_class=HTMLResponse)
+def guess_contact_email(contact_id:int):
+ with connect() as conn:
+  contact=conn.execute("SELECT contacts.*,companies.website FROM contacts JOIN companies ON companies.id=contacts.company_id WHERE contacts.id=?",(contact_id,)).fetchone()
+  samples=[dict(x) for x in conn.execute("SELECT name,email FROM contacts WHERE company_id=? AND email<>'' AND email_status<>'guess'",(contact["company_id"],)).fetchall()] if contact else []
+ if not contact: raise HTTPException(404,"Contact not found.")
+ if contact["email"]: raise HTTPException(400,"This contact already has an email address.")
+ website=contact["website"] or ""
+ if not website: raise HTTPException(400,"A company website is required to generate an email guess.")
+ domain=urlsplit(website if "://" in website else "https://"+website).hostname or ""
+ name=(contact["name"] or "").split()
+ if not name: raise HTTPException(400,"A contact name is required.")
+ pattern=learn_email_pattern(samples)
+ guess=guess_email(name[0],name[-1] if len(name)>1 else "",domain,pattern)
+ reason=f"Generated guess using {guess['pattern']} pattern. Verify before use."
+ set_contact_email(contact_id,guess["address"],"guess",reason)
+ return shell(f"<h1>Email guess created</h1><p>{esc(guess['address'])}</p><p>Status: guess — not deliverable until verified.</p><p>{esc(reason)}</p><a href='/contacts'>Back to contacts</a>")
 
 @app.get("/campaigns",response_class=HTMLResponse)
 def campaigns_page():
