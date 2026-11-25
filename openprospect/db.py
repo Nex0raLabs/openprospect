@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os, sqlite3
+import os, sqlite3, re\nfrom urllib.parse import urlsplit
 from pathlib import Path
 
 def db_path() -> Path:
@@ -43,7 +43,7 @@ def connect():
 def log(event,details=""):
     with connect() as c:c.execute("INSERT INTO activity(event,details) VALUES(?,?)",(event,details))
 
-def add_company(name,website="",industry="",location="",notes="",source="manual",source_url=""):
+def add_company(name,website="",industry="",location="",notes="",source="manual",source_url="",phone="",email="",socials=""):
     with connect() as c:
         cur=c.execute("INSERT INTO companies(name,website,industry,location,notes,source,source_url) VALUES(?,?,?,?,?,?,?)",
         (name.strip(),website.strip(),industry.strip(),location.strip(),notes.strip(),source,source_url))
