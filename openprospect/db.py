@@ -90,7 +90,10 @@ def add_suppression(value,reason="user request"):
     log("suppression_added",value)
 
 def is_suppressed(value):
-    with connect() as c:return c.execute("SELECT 1 FROM suppressions WHERE value=?",(value.strip().lower(),)).fetchone() is not None
+    normalized=value.strip().lower()
+    domain=normalized.rsplit("@",1)[1] if "@" in normalized else normalized
+    with connect() as c:
+        return c.execute("SELECT 1 FROM suppressions WHERE value IN (?,?)",(normalized,domain)).fetchone() is not None
 
 def list_activity(limit=100):
     with connect() as c:return [dict(r) for r in c.execute("SELECT * FROM activity ORDER BY id DESC LIMIT ?",(limit,))]
