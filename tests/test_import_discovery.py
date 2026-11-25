@@ -23,7 +23,10 @@ def test_company_dedupe_normalizes_domain_and_kenyan_phone():
 
 def test_company_csv_import_skips_duplicate_domain():
     client = _client()
-    content = b"name,website,phone,industry,location\nFirst Cafe,https://first.example,0711111111,cafe,Nairobi\nDuplicate Cafe,https://www.first.example,0722222222,cafe,Nairobi\n"
+    content = b"""name,website,phone,industry,location
+First Cafe,https://first.example,0711111111,cafe,Nairobi
+Duplicate Cafe,https://www.first.example,0722222222,cafe,Nairobi
+"""
     response = client.post(
         "/import/companies.csv",
         files={"file": ("companies.csv", content, "text/csv")},
