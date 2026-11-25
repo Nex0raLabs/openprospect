@@ -26,7 +26,13 @@ def discover_osm(city:str,category:str="any business",limit:int=50):
     with urllib.request.urlopen(req,timeout=30) as r: places=json.loads(r.read())
     if not places:raise RuntimeError("Location not found by OpenStreetMap. Try a more specific city name.")
     lat=float(places[0]["lat"]);lon=float(places[0]["lon"])
-    overpass=f'[out:json][timeout:45];( {selector} )(around:10000,{lat},{lon});out center tags;'
+    clauses=[]
+    for clause in selector.split(";"):
+        clause=clause.strip()
+        if clause:
+            clause=clause.replace("node[","node(around:10000,%s,%s)["%(lat,lon)).replace("way[","way(around:10000,%s,%s)["%(lat,lon)).replace("relation[","relation(around:10000,%s,%s)["%(lat,lon))
+            clauses.append(clause+";")
+    overpass="[out:json][timeout:45];("+ "".join(clauses) +");out center tags;"
     data=urllib.parse.urlencode({"data":overpass}).encode()
     req=urllib.request.Request("https://overpass-api.de/api/interpreter",data=data,headers={"User-Agent":"OpenProspect/0.1"})
     with urllib.request.urlopen(req,timeout=60) as r: payload=json.loads(r.read())
