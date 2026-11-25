@@ -177,4 +177,6 @@ def ai_chat(payload:dict):
 
 # Keep the local dashboard private even when bound to loopback.
 from .security import install_security
+from .training_routes import router as training_router
+app.include_router(training_router)
 install_security(app)
