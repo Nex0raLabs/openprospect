@@ -19,10 +19,13 @@ def main():
             parser.error("Dashboard host must be loopback-only (127.0.0.1, ::1 or localhost).")
         from .app import app
         from .training_routes import router as training_router
+        from .security import get_dashboard_token
         app.include_router(training_router)
         url = f"http://{host}:{port}"
-        print(f"OpenProspect dashboard: {url} (CTRL+C to stop)")
-        webbrowser.open(url)
+        private_url = url + "/#token=" + get_dashboard_token()
+        print(f"Private OpenProspect dashboard: {private_url}")
+        print("Keep this link private. Press CTRL+C to stop.")
+        webbrowser.open(private_url)
         uvicorn.run(app, host=host, port=port)
     elif args.command == "status":
         print("OpenProspect status")
