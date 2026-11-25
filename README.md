@@ -13,14 +13,16 @@ OpenProspect is an open-source application for finding businesses from public ma
 | Local dashboard | FastAPI dashboard at `http://127.0.0.1:5555` |
 | Company register | Add, view, store and export companies in SQLite |
 | Business discovery | Free OpenStreetMap / Overpass + Nominatim, 10 km around a geocoded place |
-| Website research | Fetches public homepage, extracts title, description, visible text, email and phone strings |
+| Website research | Reads the public homepage and up to two relevant same-site pages (robots.txt-aware), extracts public contact strings and records evidence-backed buying signals |
 | Contacts | Manually record contacts, role, source URL and email status |
 | Campaigns | Create and organise campaign records |
 | Product training | `openprospect train <url>` reads the public site and saves an editable local company profile; Train screen available in the dashboard |
+| Buying signals | Configurable deterministic checks for HTTPS, mobile viewport, schema, WhatsApp, booking/ordering, contact pages, stale copyright, load time and hiring pages |
 | AI drafts | Ollama locally, Claude Code CLI, Codex CLI, or optional Anthropic / OpenAI-compatible endpoints |
 | Outbox | Review, approve or reject drafts; approval never sends |
 | Suppression list | Store opt-out addresses and block draft creation for exact suppressed email |
-| Exports | Company and contact CSV |
+| Imports / exports | Company and contact CSV import and export |
+| Company deduplication | Normalized website domain and Kenyan phone formats |
 | Activity | Local audit trail for key operations |
 | MCP | Optional tools to search saved companies, save companies and call configured AI |
 
@@ -55,6 +57,10 @@ The dashboard binds to `127.0.0.1` by default, prints a private token link, and 
 ## Train OpenProspect on your product
 
 Run `openprospect train https://your-company.com` to read the homepage and up to two relevant same-site pages, subject to `robots.txt`. It saves `company-training.json` under your local OpenProspect data folder. Open the dashboard **Train** screen to edit the ICP, offer, banned phrases, sender signature, language and default CTA. Extraction is heuristic and must be reviewed; it does not invent missing pricing or proof.
+
+## Buying signals
+
+Open **Signals** to edit built-in signal weights or add custom keyword rules. Profile a company to store evidence-linked observations and an explainable 0–100 opportunity score. Signals are heuristic indicators, not verified claims; review the linked page before using them in outreach.
 
 ## AI setup
 
@@ -109,7 +115,7 @@ Available MCP tools: `search_companies`, `save_company`, and `ask_configured_ai`
 
 Open the **Discover** tab, enter a city/place and select a category. OpenProspect geocodes the place using Nominatim and searches OpenStreetMap within a 10 km radius using Overpass. Coverage depends on volunteer map data. Search results may be incomplete, outdated or missing websites and contact details. A website being present does not mean the business is a suitable prospect or has consented to marketing.
 
-The **Company** page can fetch the public homepage and show text and possible contact strings. These are leads for human review, not verified facts. The app does not currently crawl entire websites or verify email deliverability.
+The **Company** page can fetch the public homepage and up to two relevant same-site pages, subject to robots.txt. It records configurable buying signals with evidence URLs and confidence. Public email and phone strings remain unverified; no email deliverability verification is implemented yet.
 
 ## Safety and compliance
 
