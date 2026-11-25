@@ -115,12 +115,12 @@ Available MCP tools: `search_companies`, `save_company`, and `ask_configured_ai`
 
 Open the **Discover** tab, enter a city/place and select a category. OpenProspect geocodes the place using Nominatim and searches OpenStreetMap within a 10 km radius using Overpass. Coverage depends on volunteer map data. Search results may be incomplete, outdated or missing websites and contact details. A website being present does not mean the business is a suitable prospect or has consented to marketing.
 
-The **Company** page can fetch the public homepage and up to two relevant same-site pages, subject to robots.txt. It records configurable buying signals with evidence URLs and confidence. Public email and phone strings remain unverified; no email deliverability verification is implemented yet.
+The **Company** page can fetch the public homepage and up to two relevant same-site pages, subject to robots.txt. It records configurable buying signals with evidence URLs and confidence. Public email and phone strings remain unverified until the separate contact verification action is run. Email verification is heuristic and network-dependent; SMTP RCPT acceptance is not a guarantee of inbox delivery.
 
 ## Safety and compliance
 
-- No email or social message is sent by OpenProspect.
-- Marking a draft approved is a local review state only.
+- Email can be sent through SMTP after explicit approval and recipient verification; no automatic campaign sending is implemented.
+- WhatsApp sending is available only through the optional unofficial Baileys sidecar and has not been end-to-end validated.
 - Publicly visible contact details are not automatically permission to send marketing.
 - Check applicable privacy, direct-marketing and anti-spam laws in the sender's and recipient's jurisdictions.
 - Record the source of personal data, honour objections and opt-outs, and use the suppression list.
@@ -146,17 +146,19 @@ python -m pytest -q
 
 GitHub Actions runs tests on Windows and Ubuntu with Python 3.11, 3.12 and 3.13.
 
-## Roadmap / not yet implemented
+## Not implemented or not verified
 
 - Decision-maker discovery and contact enrichment providers
-- Email verification adapters and verified/risky/invalid classifications
-- Gmail, Microsoft 365 and generic IMAP/SMTP integrations
-- Inbox sync, reply classification and conversation management
-- Scheduled campaigns, sending windows, rate limits and deliverability monitoring
-- Advanced cohort builder, scoring and analytics
+- Gmail / Microsoft 365 OAuth integrations and provider-specific mailbox support
+- Full inbox threading, reply classification, bounce and out-of-office handling, sequence stop rules, reply composer and notes
+- Scheduled campaigns, office-hour windows, jitter, cross-channel daily caps and deliverability monitoring
+- Full autonomous discovery → enrichment → verification → writing → approval pipeline
+- WhatsApp delivery/read callbacks, STOP handling, duplicate-message protection, randomized delays, daily cap and auto-pause safety rails
+- Official WhatsApp Cloud API integration
+- Advanced cohort builder, analytics, Usage and Help screens, command palette, global search, kanban, bulk actions and PWA
 - Production authentication, encrypted secrets storage and multi-user deployment
 
-These items are not available yet. Do not configure a live mailbox expecting sending or reply handling.
+Do not treat the integrations as production-ready. SMTP, IMAP and WhatsApp require live provider testing with accounts and devices you control.
 
 ## License
 
