@@ -100,7 +100,7 @@ GitHub Actions did perform a clean checkout and install on hosted runners. The a
 
 ### SSRF release blocker detail
 
-`openprospect/training.py::_public_http_url` validates a hostname/IP before request, but `urllib.request.urlopen` automatically follows redirects. The code only validates `response.geturl()` after the redirected request has already connected. Therefore a public URL can redirect to a loopback/private destination before the post-fetch check. The same pattern exists in robots.txt fetching. Do not expose website training/profile to untrusted URLs until redirects are validated before connection and DNS resolution is pinned/rechecked safely.
+`openprospect/training.py` previously used `urllib.request.urlopen`, which automatically followed redirects before checking the final URL. During this audit, that redirect path was changed to a custom handler that validates each redirect target before following it, including robots.txt redirects. A regression test was added for a redirect to `127.0.0.1`. The current CI run is pending, and DNS rebinding between address validation and socket connection remains unresolved. Do not expose website training/profile to untrusted URLs until DNS resolution is pinned to the validated public address and tested.
 
 ## 4. Faked, misleading, or incomplete claims
 
@@ -123,10 +123,12 @@ GitHub Actions did perform a clean checkout and install on hosted runners. The a
 |---|---|
 | Reconcile contradictory README claims and enumerate missing/unverified integrations | `8b7aab4cebb56cb770f69c474f4af5c55af06e1d` |
 | Repair the literal `\\n` sequence in the README capability table; verified the seven affected rows render as seven separate Markdown rows | `f73aac9c898a7c8fb581326611d03b56dd6424f2` |
+| Validate each HTTP redirect target before following it in website and robots.txt fetches | `306f6ee21b28485d9c563e660773cce2213279a6` |
+| Add a regression test for redirect-to-loopback rejection (CI run pending) | `c6c71406e2d85146b0e4247d20ed7ed432a43297` |
 | Replace misleading “No auto-send” dashboard header with “No automatic campaign sending” while retaining explicit manual-send controls | `25924f43099388206bae99d51c78bf9ccb9a95ae` |
 | Correct CLI status output so it no longer claims all outbound sending is disabled | `c1e52efe4c9892a9b07a68d9a6c68c4f515442e4` |
 
-No code-level security or integration fix is claimed in this audit. The latest CI run for the current README fix, [45712288529](https://github.com/linkto254-bot/openprospect/actions/runs/45712288529), was pending when this report was updated; the previous full six-job success was run [45711353671](https://github.com/linkto254-bot/openprospect/actions/runs/45711353671) on the pre-audit branch head. The SSRF, delivery idempotency, WhatsApp safeguards and missing workflow features require implementation and dedicated regression tests before they can be marked fixed.
+A limited code-level SSRF mitigation was added: redirects to private/loopback destinations are rejected before following. It is not a complete SSRF fix because DNS rebinding is still possible, and its new regression test has not yet passed in CI. The latest CI run for the redirect regression test, [45712416599](https://github.com/linkto254-bot/openprospect/actions/runs/45712416599), was pending when this report was updated; the previous full six-job success was run [45711353671](https://github.com/linkto254-bot/openprospect/actions/runs/45711353671) on the pre-audit branch head. The SSRF, delivery idempotency, WhatsApp safeguards and missing workflow features require implementation and dedicated regression tests before they can be marked fixed.
 
 ## 6. Needs my input
 
