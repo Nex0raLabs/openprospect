@@ -40,7 +40,8 @@
 ## Delivery checklist
 
 ### Foundation and security
-- [x] Audit every tracked source, test, docs and workflow file.\n- [x] Capture CI test results: 18 tests passed on Ubuntu and Windows for Python 3.11, 3.12 and 3.13 (workflow run 45681114435).
+- [x] Audit every tracked source, test, docs and workflow file.
+- [x] Capture CI test results: 21 tests passed on Ubuntu and Windows for Python 3.11, 3.12 and 3.13 (workflow run 45681819890).
 - [x] Keep secrets, database files, mailbox credentials and WhatsApp sessions out of Git; harden .gitignore.
 - [ ] Add encrypted local secret/session storage and private token dashboard authentication.
 - [ ] Preserve loopback-only binding, host validation and CSRF/origin protections.
