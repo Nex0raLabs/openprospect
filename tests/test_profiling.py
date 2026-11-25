@@ -61,3 +61,20 @@ def test_custom_signal_rules_are_editable_and_applied(monkeypatch, tmp_path):
     ))
     result = profiling.profile_website("https://sample.example/")
     assert "HAS_VEGAN_MENU" in {signal["code"] for signal in result["signals"]}
+
+
+def test_signal_observations_keep_company_and_evidence(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENPROSPECT_HOME", str(tmp_path))
+    from openprospect.db import add_company, save_company_observations, list_observations
+    company_id = add_company("Evidence Cafe", "https://evidence.example")
+    save_company_observations(company_id, [{
+        "code": "NO_ONLINE_BOOKING",
+        "label": "No online booking",
+        "weight": 12,
+        "confidence": 0.75,
+        "evidence_url": "https://evidence.example/",
+    }])
+    rows = list_observations()
+    assert rows[0]["company_name"] == "Evidence Cafe"
+    assert rows[0]["evidence_url"] == "https://evidence.example/"
+    assert rows[0]["confidence"] == 0.75
