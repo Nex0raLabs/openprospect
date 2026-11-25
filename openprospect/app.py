@@ -26,7 +26,7 @@ form.inline{display:inline}form.inline button{margin:2px}.tag{color:#3fb950}.war
 
 def esc(v):return html.escape(str(v or ""),quote=True)
 def shell(body):
- return f'<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenProspect</title>{CSS}</head><body><header><div><div class="brand">◈ OpenProspect</div><small>Free, local-first business prospecting</small></div><small>Local database · Human approval · No auto-send</small></header><nav><a href="/">Today</a><a href="/discover">Discover</a><a href="/companies">Companies</a><a href="/contacts">Contacts</a><a href="/campaigns">Campaigns</a><a href="/drafts">Outbox</a><a href="/activity">Activity</a><a href="/settings">Settings</a></nav><main>{body}</main></body></html>'
+ return f'<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OpenProspect</title>{CSS}</head><body><header><div><div class="brand">◈ OpenProspect</div><small>Free, local-first business prospecting</small></div><small>Local database · Human approval · No auto-send</small></header><nav><a href="/">Today</a><a href="/train">Train</a><a href="/discover">Discover</a><a href="/companies">Companies</a><a href="/contacts">Contacts</a><a href="/campaigns">Campaigns</a><a href="/drafts">Outbox</a><a href="/activity">Activity</a><a href="/settings">Settings</a></nav><main>{body}</main></body></html>'
 
 def company_table(items):
  if not items:return "<p class='muted'>No companies yet. Add one or use Discover.</p>"
