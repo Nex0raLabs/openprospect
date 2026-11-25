@@ -59,3 +59,36 @@ def connections():
     from .messaging import email_status,imap_status
     smtp=email_status();imap=imap_status()
     return page("Connections",f"<section><h2>Email</h2><p>SMTP: {'Configured' if smtp['configured'] else 'Not connected'}</p><p>IMAP: {'Configured' if imap['configured'] else 'Not connected'}</p><p>Missing SMTP variables: {', '.join(smtp['missing']) or 'None'}</p><p>Missing IMAP variables: {', '.join(imap['missing']) or 'None'}</p><p>Credentials are read from environment variables; never paste them into the dashboard.</p></section><section><h2>WhatsApp</h2><p>Baileys sidecar: not connected until separately installed, paired and health-checked.</p><p>Cloud API: not connected until access token, phone-number ID and webhook are configured.</p></section>")
+
+@router.post("/drafts/{draft_id}/send",response_class=HTMLResponse)
+def send_approved_draft(draft_id:int):
+    import os
+    from urllib.parse import quote
+    from .db import set_draft_status
+    from .messaging import send_email
+    with connect() as c:
+        row=c.execute("SELECT drafts.*,contacts.email,contacts.email_status,contacts.verified_at FROM drafts JOIN contacts ON contacts.id=drafts.contact_id WHERE drafts.id=?",(draft_id,)).fetchone()
+    if not row: raise HTTPException(404,"Draft or linked contact not found.")
+    if row["status"]!="approved": raise HTTPException(400,"Approve the draft before sending.")
+    if row["email_status"]!="verified" or not row["verified_at"]: raise HTTPException(400,"Recipient must be verified in OpenProspect first.")
+    base=os.getenv("OPENPROSPECT_PUBLIC_BASE_URL","").rstrip("/")
+    if not base: raise HTTPException(400,"Set OPENPROSPECT_PUBLIC_BASE_URL to your public HTTPS unsubscribe endpoint before sending.")
+    url=base+"/unsubscribe?email="+quote(row["email"])
+    try:
+        result=send_email(to=row["email"],subject=row["subject"],body=row["body"],unsubscribe_url=url,verification={"address":row["email"],"status":"verified","catch_all":False},approved=True)
+    except Exception as exc: return page("Email send",f"<p class='warning'>Not sent: {exc}</p><a href='/drafts'>Back</a>")
+    set_draft_status(draft_id,"sent")
+    return page("Email sent",f"<p>SMTP accepted the message to {row['email']}.</p><p>Message ID: {result['message_id']}</p><a href='/drafts'>Back</a>")
+
+@router.get("/unsubscribe",response_class=HTMLResponse)
+def unsubscribe(email:str):
+    add_suppression(email,"Recipient used unsubscribe link")
+    return HTMLResponse("<h1>Unsubscribed</h1><p>This address has been added to the OpenProspect suppression list.</p>")
+
+@router.post("/api/whatsapp/inbound")
+def whatsapp_inbound(payload:dict):
+    import os, hmac
+    # The security middleware checks the sidecar bearer token before this route.
+    from .conversations import add_message
+    add_message("whatsapp",str(payload.get("external_id","")),str(payload.get("address","")),str(payload.get("subject","WhatsApp")),str(payload.get("body","")),"inbound")
+    return {"ok":True}
