@@ -72,10 +72,20 @@ def _public_http_url(url: str) -> urllib.parse.SplitResult:
     return parsed
 
 
+class _PublicRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Validate every redirect target before urllib opens the next connection."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        _public_http_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_SAFE_OPENER = urllib.request.build_opener(_PublicRedirectHandler())
+
+
 def _fetch(url: str, timeout: int = 15) -> tuple[str, str]:
     _public_http_url(url)
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with _SAFE_OPENER.open(request, timeout=timeout) as response:
         final_url = response.geturl()
         _public_http_url(final_url)
         content_type = response.headers.get("Content-Type", "")
@@ -93,8 +103,9 @@ def _allowed_by_robots(url: str) -> bool:
     parser = urllib.robotparser.RobotFileParser()
     parser.set_url(robots_url)
     try:
+        _public_http_url(robots_url)
         request = urllib.request.Request(robots_url, headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with _SAFE_OPENER.open(request, timeout=10) as response:
             _public_http_url(response.geturl())
             body = response.read(256_000).decode("utf-8", "replace")
         parser.parse(body.splitlines())
