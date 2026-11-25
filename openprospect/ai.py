@@ -28,7 +28,7 @@ def save_provider_settings(provider: str, model: str = "", base_url: str = "") -
     from .db import db_path
     path = db_path().parent / "ai-settings.json"
     settings = {"provider": provider, "model": model.strip(), "base_url": base_url.strip()}
-    path.write_text(json.dumps(settings, indent=2) + "\\n", encoding="utf-8")
+    path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
     return settings
 
 
