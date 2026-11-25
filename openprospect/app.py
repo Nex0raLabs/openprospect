@@ -8,7 +8,8 @@ from .db import (add_company,list_companies,connect,add_contact,list_contacts,
 from .ai import ask_ai
 from .discovery import discover_osm
 from .profiling import profile_website
-from .verification import verify_email,learn_email_pattern,guess_email\nfrom urllib.parse import urlsplit
+from .verification import verify_email,learn_email_pattern,guess_email
+from urllib.parse import urlsplit
 
 app=FastAPI(title="OpenProspect",version="0.2.0")
 CSS="""<style>
