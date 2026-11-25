@@ -7,7 +7,7 @@
 - [x] Read the current README and packaging metadata.
 - [x] Read Sellbird's public README and the requested pipeline, approval/sending, and dashboard guides for feature-level comparison only.
 - [x] Complete a recursive source-tree and module/test audit before implementation.
-- [ ] Record baseline test results and identify existing API, CLI, database, frontend, and security boundaries.
+- [x] Record baseline test results and identify existing API, CLI, database, frontend, and security boundaries.
 
 ### What exists (confirmed from README and packaging)
 
@@ -40,8 +40,8 @@
 ## Delivery checklist
 
 ### Foundation and security
-- [x] Audit every tracked source, test, docs and workflow file.\n- [ ] Capture baseline test results (not executable through the GitHub repository connector; awaiting CI/local runner).
-- [ ] Keep secrets, database files, mailbox credentials and WhatsApp sessions out of Git; harden .gitignore.
+- [x] Audit every tracked source, test, docs and workflow file.\n- [x] Capture CI test results: 18 tests passed on Ubuntu and Windows for Python 3.11, 3.12 and 3.13 (workflow run 45681114435).
+- [x] Keep secrets, database files, mailbox credentials and WhatsApp sessions out of Git; harden .gitignore.
 - [ ] Add encrypted local secret/session storage and private token dashboard authentication.
 - [ ] Preserve loopback-only binding, host validation and CSRF/origin protections.
 - [ ] Add migration-safe SQLAlchemy/SQLite data model and backup/export path.
@@ -49,15 +49,15 @@
 
 ### 1. Training
 - [ ] `openprospect train <url>` fetches a site and extracts product, buyers, pricing, proof, voice and objections.
-- [ ] Persist editable local training configuration.
+- [x] Persist editable local training configuration (unit-tested local JSON save/load and edit).
 - [ ] Train screen edits ICP, offer, banned phrases, signature, language and CTA.
 - [ ] Pluggable Ollama, Claude Code CLI, Codex CLI and user-supplied OpenAI-compatible providers.
 - [ ] Settings provider selection and real Test connection action.
 
 ### 2. Discovery
 - [ ] Free Overpass/Nominatim discovery by category and city, including Nairobi, Mombasa and Kisumu.
-- [ ] CSV import and manual company creation.
-- [ ] Dedupe by normalized domain and phone.
+- [x] CSV import and manual company creation (company CSV import tested; contact CSV import implemented but not yet separately tested).
+- [x] Dedupe by normalized domain and phone (unit-tested for domain and Kenyan phone formats).
 - [ ] Store source URL, company identity, category, address, website, phone, published email and socials.
 - [ ] robots.txt compliance, bounded concurrency, caching and per-host rate limits.
 
@@ -159,3 +159,13 @@ Key implementation risks found during source review:
 - Existing "approved" drafts are only local state and are not sent; README correctly discloses this.
 - The database is direct SQLite with ad-hoc table creation, not SQLAlchemy migrations.
 - Existing tests cover basic database/dashboard/API/suppression behavior only. No test execution environment is exposed by the GitHub file connector; CI must supply the executable verification.
+
+
+## Verified implementation progress (2026-11-25)
+
+- GitHub Actions workflow run **45681114435** completed successfully: 6/6 matrix jobs passed (Ubuntu/Windows × Python 3.11/3.12/3.13); each test run reported 18 passed.
+- Implemented and tested private dashboard token exchange, HttpOnly/SameSite session cookie, loopback Host rejection, local provider settings, missing CLI reporting, training data parsing/persistence, unsafe URL rejection, domain/phone deduplication and company CSV import.
+- Implemented but not yet verified against a real user website: the live `openprospect train <url>` fetch flow.
+- Implemented but not yet verified with live provider credentials: Claude Code, Codex, Ollama and OpenAI-compatible connection tests.
+- No real SMTP delivery, IMAP reply sync or WhatsApp pairing/sending has been performed. Those capabilities remain unavailable and must not be presented as connected.
+- The current dashboard is still the existing server-rendered HTML UI with incremental routes; the full requested dashboard redesign is outstanding.
