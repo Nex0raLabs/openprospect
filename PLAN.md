@@ -63,9 +63,9 @@
 
 ### 3. Signals and profiling
 - [ ] Fetch homepage, contact and about pages without LLM calls.
-- [ ] Detect no website, stale site, mobile issues, missing booking/ordering, SSL, performance, WhatsApp and hiring signals.
-- [ ] User-editable signal definitions and evidence.
-- [ ] Explainable company score with observation history and confidence.
+- [x] Detect no website, stale site, mobile viewport, missing booking/ordering, SSL, slow response, WhatsApp and hiring-page signals (fixture-tested).
+- [x] User-editable built-in weights and custom keyword signals with evidence links (fixture-tested).
+- [x] Explainable company score with evidence URL, confidence and persisted observation history (tested).
 
 ### 4. Enrichment
 - [ ] Extract public decision makers and contacts only from company-owned pages/public listings.
@@ -169,3 +169,12 @@ Key implementation risks found during source review:
 - Implemented but not yet verified with live provider credentials: Claude Code, Codex, Ollama and OpenAI-compatible connection tests.
 - No real SMTP delivery, IMAP reply sync or WhatsApp pairing/sending has been performed. Those capabilities remain unavailable and must not be presented as connected.
 - The current dashboard is still the existing server-rendered HTML UI with incremental routes; the full requested dashboard redesign is outstanding.
+
+
+## Latest verified phase (2026-11-25)
+
+- GitHub Actions workflow run **45681819890** completed successfully: 6/6 matrix jobs passed (Ubuntu/Windows × Python 3.11/3.12/3.13); each test run reported 21 passed.
+- Website profiling now reads the homepage and up to two relevant same-site pages, checks robots.txt, and extracts public email/phone strings without an LLM.
+- Added deterministic buying signals for HTTPS, mobile viewport declaration, schema markup, WhatsApp links, booking/ordering, contact pages, stale copyright years, slow homepage response and hiring pages.
+- Added editable built-in signal weights and custom keyword rules, evidence links, confidence values, an explainable opportunity score and persistent observation history.
+- The full requested feature set remains incomplete; see unchecked items above. No live outbound messaging capability has been added.
