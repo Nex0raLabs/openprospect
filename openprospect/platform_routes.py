@@ -1,5 +1,5 @@
 """Dashboard surfaces for real mailbox, inbox, automation and compliance features."""
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from .db import connect, list_activity, log, is_suppressed, add_suppression
 from .conversations import ensure_schema, list_conversations
@@ -72,7 +72,7 @@ def send_approved_draft(draft_id:int):
     if row["status"]!="approved": raise HTTPException(400,"Approve the draft before sending.")
     if row["email_status"]!="verified" or not row["verified_at"]: raise HTTPException(400,"Recipient must be verified in OpenProspect first.")
     base=os.getenv("OPENPROSPECT_PUBLIC_BASE_URL","").rstrip("/")
-    if not base: raise HTTPException(400,"Set OPENPROSPECT_PUBLIC_BASE_URL to your public HTTPS unsubscribe endpoint before sending.")
+    if not base.startswith("https://"): raise HTTPException(400,"Set OPENPROSPECT_PUBLIC_BASE_URL to a public HTTPS unsubscribe endpoint before sending.")
     url=base+"/unsubscribe?email="+quote(row["email"])
     try:
         result=send_email(to=row["email"],subject=row["subject"],body=row["body"],unsubscribe_url=url,verification={"address":row["email"],"status":"verified","catch_all":False},approved=True)
