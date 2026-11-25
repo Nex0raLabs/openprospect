@@ -3,32 +3,94 @@ import os, sqlite3
 from pathlib import Path
 
 def db_path() -> Path:
-    home = Path(os.getenv("OPENPROSPECT_HOME", Path.home() / ".openprospect"))
-    home.mkdir(parents=True, exist_ok=True)
-    return home / "openprospect.db"
+    home=Path(os.getenv("OPENPROSPECT_HOME",Path.home()/".openprospect"))
+    home.mkdir(parents=True,exist_ok=True)
+    return home/"openprospect.db"
 
 def connect():
-    conn = sqlite3.connect(db_path())
-    conn.row_factory = sqlite3.Row
-    conn.execute("""CREATE TABLE IF NOT EXISTS companies (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
-      website TEXT DEFAULT '', industry TEXT DEFAULT '', location TEXT DEFAULT '',
-      notes TEXT DEFAULT '', source TEXT DEFAULT 'manual',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS drafts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER,
-      channel TEXT DEFAULT 'email', subject TEXT DEFAULT '', body TEXT NOT NULL,
-      status TEXT DEFAULT 'draft', created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(company_id) REFERENCES companies(id))""")
-    conn.commit()
-    return conn
+    c=sqlite3.connect(db_path(),timeout=30)
+    c.row_factory=sqlite3.Row
+    c.execute("PRAGMA foreign_keys=ON")
+    c.executescript("""
+    CREATE TABLE IF NOT EXISTS companies(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,website TEXT DEFAULT '',
+      industry TEXT DEFAULT '',location TEXT DEFAULT '',notes TEXT DEFAULT '',
+      source TEXT DEFAULT 'manual',source_url TEXT DEFAULT '',created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE IF NOT EXISTS contacts(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,company_id INTEGER NOT NULL,name TEXT DEFAULT '',
+      title TEXT DEFAULT '',email TEXT DEFAULT '',phone TEXT DEFAULT '',source_url TEXT DEFAULT '',
+      email_status TEXT DEFAULT 'unknown',notes TEXT DEFAULT '',created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
+    CREATE TABLE IF NOT EXISTS campaigns(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,description TEXT DEFAULT '',
+      status TEXT DEFAULT 'draft',created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE IF NOT EXISTS drafts(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,company_id INTEGER,contact_id INTEGER,campaign_id INTEGER,
+      channel TEXT DEFAULT 'email',subject TEXT DEFAULT '',body TEXT NOT NULL,
+      status TEXT DEFAULT 'draft',approved_at TEXT DEFAULT '',created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE SET NULL,
+      FOREIGN KEY(contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
+      FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE SET NULL);
+    CREATE TABLE IF NOT EXISTS suppressions(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,value TEXT NOT NULL UNIQUE,reason TEXT DEFAULT '',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE IF NOT EXISTS activity(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,event TEXT NOT NULL,details TEXT DEFAULT '',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+    """)
+    return c
 
-def add_company(name, website="", industry="", location="", notes="", source="manual"):
+def log(event,details=""):
+    with connect() as c:c.execute("INSERT INTO activity(event,details) VALUES(?,?)",(event,details))
+
+def add_company(name,website="",industry="",location="",notes="",source="manual",source_url=""):
     with connect() as c:
-        cur=c.execute("INSERT INTO companies(name,website,industry,location,notes,source) VALUES(?,?,?,?,?,?)",
-                      (name,website,industry,location,notes,source))
-        return cur.lastrowid
+        cur=c.execute("INSERT INTO companies(name,website,industry,location,notes,source,source_url) VALUES(?,?,?,?,?,?,?)",
+        (name.strip(),website.strip(),industry.strip(),location.strip(),notes.strip(),source,source_url))
+        ident=cur.lastrowid
+    log("company_added",f"{name} ({source})")
+    return ident
 
 def list_companies(limit=200):
+    with connect() as c:return [dict(r) for r in c.execute("SELECT * FROM companies ORDER BY id DESC LIMIT ?",(limit,))]
+
+def add_contact(company_id,name="",title="",email="",phone="",source_url="",email_status="unknown",notes=""):
     with connect() as c:
-        return [dict(r) for r in c.execute("SELECT * FROM companies ORDER BY id DESC LIMIT ?",(limit,))]
+        cur=c.execute("INSERT INTO contacts(company_id,name,title,email,phone,source_url,email_status,notes) VALUES(?,?,?,?,?,?,?,?)",
+        (company_id,name,title,email,phone,source_url,email_status,notes))
+        return cur.lastrowid
+
+def list_contacts(limit=500):
+    with connect() as c:return [dict(r) for r in c.execute("SELECT contacts.*,companies.name company_name FROM contacts JOIN companies ON companies.id=contacts.company_id ORDER BY contacts.id DESC LIMIT ?",(limit,))]
+
+def add_campaign(name,description=""):
+    with connect() as c:
+        cur=c.execute("INSERT INTO campaigns(name,description) VALUES(?,?)",(name,description))
+        return cur.lastrowid
+
+def list_campaigns():
+    with connect() as c:return [dict(r) for r in c.execute("SELECT * FROM campaigns ORDER BY id DESC")]
+
+def add_draft(body,company_id=None,contact_id=None,campaign_id=None,subject="",channel="email"):
+    with connect() as c:
+        cur=c.execute("INSERT INTO drafts(body,company_id,contact_id,campaign_id,subject,channel) VALUES(?,?,?,?,?,?)",
+        (body,company_id,contact_id,campaign_id,subject,channel))
+        return cur.lastrowid
+
+def list_drafts():
+    with connect() as c:return [dict(r) for r in c.execute("SELECT drafts.*,companies.name company_name,contacts.email contact_email FROM drafts LEFT JOIN companies ON companies.id=drafts.company_id LEFT JOIN contacts ON contacts.id=drafts.contact_id ORDER BY drafts.id DESC")]
+
+def set_draft_status(draft_id,status):
+    if status not in ("draft","approved","rejected"):raise ValueError("Invalid draft status")
+    with connect() as c:c.execute("UPDATE drafts SET status=?,approved_at=CASE WHEN ?='approved' THEN CURRENT_TIMESTAMP ELSE approved_at END WHERE id=?",(status,status,draft_id))
+    log("draft_"+status,str(draft_id))
+
+def add_suppression(value,reason="user request"):
+    with connect() as c:c.execute("INSERT OR IGNORE INTO suppressions(value,reason) VALUES(?,?)",(value.strip().lower(),reason))
+    log("suppression_added",value)
+
+def is_suppressed(value):
+    with connect() as c:return c.execute("SELECT 1 FROM suppressions WHERE value=?",(value.strip().lower(),)).fetchone() is not None
+
+def list_activity(limit=100):
+    with connect() as c:return [dict(r) for r in c.execute("SELECT * FROM activity ORDER BY id DESC LIMIT ?",(limit,))]
