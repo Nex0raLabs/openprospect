@@ -122,6 +122,11 @@ def list_companies(limit=200):
 
 
 def add_contact(company_id, name="", title="", email="", phone="", source_url="", email_status="unknown", notes=""):
+    # Imported/manual records cannot self-assert deliverability.
+    if email_status == "verified":
+        email_status = "unverified"
+    if email_status not in {"unknown", "unverified", "risky", "guess", "invalid"}:
+        email_status = "unknown"
     with connect() as c:
         cur = c.execute(
             "INSERT INTO contacts(company_id,name,title,email,phone,source_url,email_status,notes) VALUES(?,?,?,?,?,?,?,?)",
