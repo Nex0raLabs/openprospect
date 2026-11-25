@@ -134,8 +134,8 @@ def verify_email(address: str, *, smtp_probe: bool = True, is_guess: bool = Fals
         result["status"] = "guess" if is_guess else "risky"
         result["reason"] = "Domain accepts a random recipient; mailbox cannot be distinguished (catch-all)."
     elif is_guess:
-        result["status"] = "guess"
-        result["reason"] = "SMTP accepted the guessed address, but it remains a guess."
+        result["status"] = "verified"
+        result["reason"] = "SMTP accepted the generated address and rejected a random recipient; the guess is now verified."
     else:
         result["status"] = "verified"
         result["reason"] = "MX exists and SMTP accepted this recipient but rejected a random address."
