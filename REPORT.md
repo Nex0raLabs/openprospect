@@ -122,6 +122,8 @@ GitHub Actions did perform a clean checkout and install on hosted runners. The a
 | Fix | Commit |
 |---|---|
 | Correct capability-table literal newline defect; reconcile contradictory README claims; explicitly enumerate missing and unverified integrations | `8b7aab4cebb56cb770f69c474f4af5c55af06e1d` |
+| Replace misleading “No auto-send” dashboard header with “No automatic campaign sending” while retaining explicit manual-send controls | `25924f43099388206bae99d51c78bf9ccb9a95ae` |
+| Correct CLI status output so it no longer claims all outbound sending is disabled | `c1e52efe4c9892a9b07a68d9a6c68c4f515442e4` |
 
 No code-level security or integration fix is claimed in this audit. The SSRF, delivery idempotency, WhatsApp safeguards and missing workflow features require implementation and dedicated regression tests before they can be marked fixed.
 
