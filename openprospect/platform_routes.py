@@ -92,3 +92,29 @@ def whatsapp_inbound(payload:dict):
     from .conversations import add_message
     add_message("whatsapp",str(payload.get("external_id","")),str(payload.get("address","")),str(payload.get("subject","WhatsApp")),str(payload.get("body","")),"inbound")
     return {"ok":True}
+
+def _wa_request(path, payload=None):
+    import os, json, urllib.request
+    base=os.getenv("WA_SIDECAR_URL","http://127.0.0.1:8787").rstrip("/")
+    token=os.getenv("WA_SIDECAR_TOKEN","")
+    if not token: raise RuntimeError("WA_SIDECAR_TOKEN is not configured.")
+    req=urllib.request.Request(base+path,data=json.dumps(payload or {}).encode() if payload is not None else None,headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},method="POST" if payload is not None else "GET")
+    with urllib.request.urlopen(req,timeout=15) as response:return json.loads(response.read().decode())
+@router.get("/whatsapp",response_class=HTMLResponse)
+def whatsapp_page():
+    import os
+    configured=bool(os.getenv("WA_SIDECAR_TOKEN"))
+    try: state=_wa_request("/status") if configured else {"state":"not_configured"}
+    except Exception as exc: state={"state":"unreachable","error":str(exc)}
+    return page("WhatsApp connection",f"<section><p>Bridge status: <b>{state.get('state')}</b></p><p>{state.get('error',state.get('lastError',''))}</p><p>Pairing code: {state.get('pairingCode','not issued')}</p><form method='post' action='/whatsapp/pair'><input name='phone' placeholder='2547XXXXXXXX' required><button>Request pairing code</button></form><p class='warning'>Baileys is an unofficial WhatsApp Web client. Use at your own risk; WhatsApp may restrict accounts. Prefer the official Cloud API for production.</p></section><section><h2>Send an approved message</h2><form method='post' action='/whatsapp/send'><input name='to' placeholder='2547XXXXXXXX' required><textarea name='message' placeholder='Message text' required></textarea><label><input type='checkbox' name='approved' value='yes' required style='width:auto'> I approve sending this message now</label><button>Send WhatsApp message</button></form></section>")
+@router.post("/whatsapp/pair",response_class=HTMLResponse)
+def whatsapp_pair(phone:str=Form(...)):
+    try: result=_wa_request("/pair",{"phone":phone})
+    except Exception as exc: return page("WhatsApp pairing",f"<p class='warning'>Pairing unavailable: {exc}</p><a href='/whatsapp'>Back</a>")
+    return page("WhatsApp pairing code",f"<h2>{result.get('pairingCode','')}</h2><p>On your phone: WhatsApp → Linked devices → Link a device → Link with phone number.</p><a href='/whatsapp'>Back</a>")
+@router.post("/whatsapp/send",response_class=HTMLResponse)
+def whatsapp_send(to:str=Form(...),message:str=Form(...),approved:str=Form("")):
+    if approved!="yes": raise HTTPException(400,"Explicit approval is required.")
+    try: result=_wa_request("/send",{"to":to,"text":message,"approved":True})
+    except Exception as exc: return page("WhatsApp send",f"<p class='warning'>Not sent: {exc}</p><a href='/whatsapp'>Back</a>")
+    return page("WhatsApp send",f"<p>Sidecar accepted message ID: {result.get('id')}</p><a href='/inbox'>Open inbox</a>")
