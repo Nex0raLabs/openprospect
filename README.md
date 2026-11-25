@@ -4,7 +4,7 @@
 
 OpenProspect is an open-source application for finding businesses from public map data, recording company and contact information, researching public websites, organising campaigns and preparing AI-assisted outreach drafts. It is designed to work for any industry, business and country where the selected data source has coverage.
 
-> **Status:** usable local prospecting/CRM alpha. It is not yet a full replacement for Sellbird: automated contact enrichment, email verification, mailbox sync, reply handling and outbound delivery are not implemented. Those capabilities are not simulated.
+> **Status:** local-first prospecting and outreach alpha. SMTP/IMAP, an optional WhatsApp Web sidecar, unified inbox storage, a profile-only automation loop and DNS checks are implemented in this branch. Live provider accounts, mailbox credentials, a paired WhatsApp device and production end-to-end tests are still required. This is not yet a turnkey or fully autonomous Sellbird replacement.
 
 ## What works today
 
@@ -19,11 +19,11 @@ OpenProspect is an open-source application for finding businesses from public ma
 | Product training | `openprospect train <url>` reads the public site and saves an editable local company profile; Train screen available in the dashboard |
 | Buying signals | Configurable deterministic checks for HTTPS, mobile viewport, schema, WhatsApp, booking/ordering, contact pages, stale copyright, load time and hiring pages |
 | AI drafts | Ollama locally, Claude Code CLI, Codex CLI, or optional Anthropic / OpenAI-compatible endpoints |
-| Outbox | Review, approve or reject drafts; approval never sends |
+| Outbox | Review, approve, reject and explicitly send approved email drafts after SMTP + verified-recipient checks |
 | Suppression list | Store opt-out addresses and block draft creation for exact suppressed email |
 | Imports / exports | Company and contact CSV import and export |
 | Company deduplication | Normalized website domain and Kenyan phone formats |
-| Activity | Local audit trail for key operations |
+| Email | SMTP STARTTLS delivery, verified-recipient gate, suppression check, unsubscribe headers and configurable daily cap |\n| Mailbox sync | IMAP SSL sync for unread messages; detects opt-out phrases and adds suppressions |\n| Conversations | Shared local inbox records for inbound email and WhatsApp events |\n| WhatsApp | Optional Node/Baileys sidecar with pairing-code request, explicit text send and inbound webhook |\n| Automation | Start/pause/run loop for public website profiling and buying-signal capture; never sends automatically |\n| Compliance | SPF, DMARC and MX DNS lookup plus a practical privacy checklist; DKIM requires a provider selector |\n| Activity | Local audit trail for key operations |
 | MCP | Optional tools to search saved companies, save companies and call configured AI |
 
 ## Zero-budget operation
@@ -167,3 +167,55 @@ Upstream project referenced for feature comparison: https://github.com/ethanplus
 ## Contributing
 
 Issues and pull requests are welcome. Never submit real personal data, API keys or credentials. Please include tests for code changes.
+
+
+## Email sending and inbox sync
+
+Email is optional and remains disconnected until configured. Add these variables to your private `.env` file:
+
+```env
+OPENPROSPECT_SMTP_HOST=smtp.example.com
+OPENPROSPECT_SMTP_PORT=587
+OPENPROSPECT_SMTP_USER=your-mailbox
+OPENPROSPECT_SMTP_PASSWORD=your-app-password
+OPENPROSPECT_FROM_EMAIL=you@example.com
+OPENPROSPECT_DAILY_SEND_LIMIT=25
+OPENPROSPECT_PUBLIC_BASE_URL=https://your-public-host
+OPENPROSPECT_IMAP_HOST=imap.example.com
+OPENPROSPECT_IMAP_PORT=993
+OPENPROSPECT_IMAP_USER=your-mailbox
+OPENPROSPECT_IMAP_PASSWORD=your-app-password
+```
+
+Restart OpenProspect, verify the recipient in Contacts, create and review a draft, approve it, then use **Send approved email now**. Delivery is refused unless SMTP is configured, the address is marked verified by the app, it is not suppressed, and a public HTTPS unsubscribe base URL is set. The daily cap defaults to 25 and can be lowered or raised up to 100. Use a dedicated mailbox and follow your provider's sending limits. IMAP sync is manual from Inbox and imports unread messages. Test with a mailbox you control before real outreach.
+
+The current unsubscribe handler records the address in the local suppression list. For a deployment behind a reverse proxy, expose the HTTPS unsubscribe route securely; the dashboard itself is designed for loopback-only use and must not be exposed directly.
+
+## WhatsApp sidecar (optional, unofficial)
+
+The sidecar is separate from the Python app and uses the Baileys WhatsApp Web protocol. WhatsApp may restrict unofficial clients; the official Cloud API is the recommended production integration and is not implemented here.
+
+```cmd
+cd whatsapp-sidecar
+copy .env.example .env
+npm install
+```
+
+Set `WA_SIDECAR_TOKEN` to the same long random secret in the sidecar environment and the Python app's `.env`. Set `OPENPROSPECT_INBOUND_URL=http://127.0.0.1:5555/api/whatsapp/inbound` in the sidecar environment. Start the Python dashboard, then start the sidecar with `npm start`. Open **WhatsApp**, request a pairing code using your number in international format without a plus sign, and enter the code in WhatsApp → Linked devices → Link a device → Link with phone number. Send messages only to business-published numbers where you have an appropriate lawful basis and follow WhatsApp policies. Pairing and delivery must be tested on a device you control.
+
+## Autonomous controls
+
+The Controls page can start, pause or manually run a local background cycle. The current loop only profiles saved public websites and stores buying signals. It does not discover endlessly, generate campaigns, or send email/WhatsApp automatically. Human approval remains required for outbound communication.
+
+## DNS and privacy readiness
+
+Open **Compliance** to check SPF, DMARC and MX records for a domain. DKIM cannot be conclusively checked without knowing the sending provider's selector. The privacy checklist is operational guidance, not legal advice or a certification of compliance. Review the Kenya Data Protection Act, ODPC guidance, applicable direct-marketing rules and provider terms before using personal data for outreach.
+
+## Known limitations
+
+- No live SMTP/IMAP mailbox or WhatsApp device has been connected and verified in this development session.
+- IMAP currently imports unread plain-text message content and groups records by sender; complex MIME, provider-specific threading, attachments and full reply classification are not complete.
+- The Baileys bridge is an optional unofficial integration. Official WhatsApp Cloud API templates, webhook verification and message-status callbacks are not implemented.
+- The automation loop only profiles existing companies; discovery, enrichment, writing, sending and reply handling are not chained into a fully autonomous pipeline.
+- SPF/DMARC/MX lookups are DNS presence checks, not deliverability guarantees. DKIM selector discovery and alignment analysis remain future work.
+- No production deployment, public HTTPS unsubscribe test, end-to-end mailbox test or WhatsApp pairing test has been performed.
