@@ -36,6 +36,8 @@ def imap_status():
     return {"configured":not missing,"missing":missing}
 
 def sync_imap(limit:int=50):
+    from .conversations import ensure_schema
+    ensure_schema()
     cfg=imap_status()
     if not cfg["configured"]: raise RuntimeError("IMAP is not configured: "+", ".join(cfg["missing"]))
     host=os.environ["OPENPROSPECT_IMAP_HOST"]; port=int(os.getenv("OPENPROSPECT_IMAP_PORT","993"))
