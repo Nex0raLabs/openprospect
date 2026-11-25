@@ -173,3 +173,8 @@ def ai_chat(payload:dict):
  if not prompt:raise HTTPException(400,"prompt is required")
  try:return {"response":ask_ai(prompt)}
  except Exception as e:raise HTTPException(400,str(e))
+
+
+# Keep the local dashboard private even when bound to loopback.
+from .security import install_security
+install_security(app)
