@@ -29,7 +29,7 @@ def main():
     elif args.command == "status":
         print("OpenProspect status")
         print("Saved companies:", len(list_companies(100000)))
-        print("Outbound sending: disabled")
+        print("Outbound sending: manual SMTP / explicit approval only; no automatic campaigns")
     elif args.command == "companies":
         for company in list_companies():
             print(f"#{company['id']} {company['name']} | {company['website']} | {company['industry']} | {company['location']}")
