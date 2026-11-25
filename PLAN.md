@@ -6,7 +6,7 @@
 
 - [x] Read the current README and packaging metadata.
 - [x] Read Sellbird's public README and the requested pipeline, approval/sending, and dashboard guides for feature-level comparison only.
-- [ ] Complete a recursive source-tree and module/test audit before implementation.
+- [x] Complete a recursive source-tree and module/test audit before implementation.
 - [ ] Record baseline test results and identify existing API, CLI, database, frontend, and security boundaries.
 
 ### What exists (confirmed from README and packaging)
@@ -40,7 +40,7 @@
 ## Delivery checklist
 
 ### Foundation and security
-- [ ] Audit every tracked source, test, docs and workflow file; capture baseline test results.
+- [x] Audit every tracked source, test, docs and workflow file.\n- [ ] Capture baseline test results (not executable through the GitHub repository connector; awaiting CI/local runner).
 - [ ] Keep secrets, database files, mailbox credentials and WhatsApp sessions out of Git; harden .gitignore.
 - [ ] Add encrypted local secret/session storage and private token dashboard authentication.
 - [ ] Preserve loopback-only binding, host validation and CSRF/origin protections.
@@ -145,3 +145,17 @@
 - [ ] Small logical commits on this feature branch; phase PRs only after real tests pass.
 - [ ] Real SMTP test to a user-controlled mailbox and real WhatsApp pairing/test only after user supplies credentials and completes pairing.
 - [ ] Do not claim end-to-end completion until each applicable item is implemented and tested.
+
+
+## Audit notes
+
+The recursive tree currently contains only the README, license, packaging/launcher files, one CI workflow, eight Python package modules, and one test module. There is no frontend build system, migrations folder, Docker configuration, changelog, playbook directory, or docs folder in OpenProspect's current tree.
+
+Key implementation risks found during source review:
+- Dashboard routes currently have no private-token authentication or CSRF/origin protection.
+- Website profiling currently fetches only the homepage and does not enforce robots.txt or robustly constrain redirects/private-network destinations.
+- Discovery uses Nominatim and Overpass directly with no explicit pacing/cache/retry policy and dedupes only by name/location at the route layer.
+- AI providers are environment-variable based; there is no connection test UI or CLI provider adapter.
+- Existing "approved" drafts are only local state and are not sent; README correctly discloses this.
+- The database is direct SQLite with ad-hoc table creation, not SQLAlchemy migrations.
+- Existing tests cover basic database/dashboard/API/suppression behavior only. No test execution environment is exposed by the GitHub file connector; CI must supply the executable verification.
