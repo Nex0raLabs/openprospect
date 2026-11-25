@@ -93,3 +93,17 @@ def test_manual_import_cannot_mark_contact_verified(monkeypatch, tmp_path):
     with connect() as conn:
         row = conn.execute("SELECT email_status FROM contacts WHERE id=?", (contact_id,)).fetchone()
     assert row["email_status"] == "unverified"
+
+
+def test_generated_guess_only_promotes_after_non_catchall_smtp(monkeypatch):
+    monkeypatch.setattr(
+        dns.resolver, "resolve",
+        lambda domain, record_type, lifetime: [SimpleNamespace(preference=10, exchange="mx.example.test.")],
+    )
+    monkeypatch.setattr(verification, "_smtp_check", lambda host, address: {
+        "target_accepted": True, "target_code": 250, "target_message": "accepted",
+        "catch_all": False, "catch_all_code": 550, "catch_all_message": "unknown recipient",
+    })
+    result = verification.verify_email("jamie.fox@example.test", is_guess=True)
+    assert result["status"] == "verified"
+    assert verification.is_deliverable(result)
