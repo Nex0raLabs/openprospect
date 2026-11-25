@@ -70,6 +70,9 @@ def verify_email(address: str, *, smtp_probe: bool = True, is_guess: bool = Fals
         result["reason"] = "Email syntax is invalid."
         return result
     local, domain = candidate.rsplit("@", 1)
+    if local.startswith(".") or local.endswith(".") or ".." in local:
+        result["reason"] = "Email local part has invalid dot placement."
+        return result
     try:
         domain = domain.encode("idna").decode("ascii").lower()
     except UnicodeError:
