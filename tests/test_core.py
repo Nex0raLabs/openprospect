@@ -24,6 +24,7 @@ def test_dashboard_and_company_api():
     login = client.post("/auth/exchange", json={"token": get_dashboard_token()})
     assert login.status_code == 200
     assert client.get("/").status_code == 200
+    assert client.get("/train").status_code == 200
     response=client.post("/api/companies",json={"name":"API Business"})
     assert response.status_code==200
     assert response.json()["ok"] is True
