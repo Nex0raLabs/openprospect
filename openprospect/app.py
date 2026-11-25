@@ -1,6 +1,6 @@
 from __future__ import annotations
 import csv,html,io
-from fastapi import FastAPI,Form,HTTPException
+from fastapi import FastAPI,Form,HTTPException,File,UploadFile
 from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse
 from .db import (add_company,list_companies,connect,add_contact,list_contacts,
  add_campaign,list_campaigns,add_draft,list_drafts,set_draft_status,
@@ -57,7 +57,7 @@ def discover_run(city:str=Form(...),category:str=Form("any business"),limit:int=
  return shell(f"<h1>Discovery complete</h1><p>Found {len(results)} map entries; saved {saved} new companies.</p><section><table><tr><th>Name</th><th>Category</th><th>Website</th><th>Phone</th></tr>{rows}</table></section><a href='/companies'>Open company register</a> · <a href='/discover'>Search again</a>")
 
 @app.get("/companies",response_class=HTMLResponse)
-def companies_page():return shell("<h1>Companies</h1>"+company_table(list_companies(10000))+"""<section><h2>Add company manually</h2><form method='post' action='/companies'><input name='name' placeholder='Business name' required><input name='website' placeholder='https://example.com'><input name='industry' placeholder='Industry'><input name='location' placeholder='City, country'><input name='phone' placeholder='Public business phone'><input name='email' placeholder='Published business email'><input name='socials' placeholder='Public social links'><textarea name='notes' placeholder='Notes and source context'></textarea><button>Add company</button></form><p><a href='/export/companies.csv'>Export companies as CSV</a></p></section>""")
+def companies_page():return shell("<h1>Companies</h1>"+company_table(list_companies(10000))+"""<section><h2>Add company manually</h2><form method='post' action='/companies'><input name='name' placeholder='Business name' required><input name='website' placeholder='https://example.com'><input name='industry' placeholder='Industry'><input name='location' placeholder='City, country'><input name='phone' placeholder='Public business phone'><input name='email' placeholder='Published business email'><input name='socials' placeholder='Public social links'><textarea name='notes' placeholder='Notes and source context'></textarea><button>Add company</button></form><p><a href='/export/companies.csv'>Export companies as CSV</a></p><form method='post' action='/import/companies.csv' enctype='multipart/form-data'><label>Import companies CSV</label><input type='file' name='file' accept='.csv,text/csv' required><button>Import CSV</button></form></section>""")
 
 @app.post("/companies")
 def create_company(name:str=Form(...),website:str=Form(""),industry:str=Form(""),location:str=Form(""),notes:str=Form(""),phone:str=Form(""),email:str=Form(""),socials:str=Form("")):
@@ -94,7 +94,7 @@ def profile_company(company_id:int):
 def contacts_page():
  rows=list_contacts()
  body="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['company_name'])}</td><td>{esc(x['title'])}</td><td>{esc(x['email'])}</td><td>{esc(x['email_status'])}</td><td><a href='/company/{x['company_id']}'>Company</a></td></tr>" for x in rows)
- return shell("<h1>Contacts</h1><p class='muted'>Contact records are manually added or sourced from public company pages. Email status is not independently verified by this release.</p><table><tr><th>Name</th><th>Company</th><th>Role</th><th>Email</th><th>Status</th><th></th></tr>"+body+"</table><p><a href='/export/contacts.csv'>Export contacts CSV</a></p>")
+ return shell("<h1>Contacts</h1><p class='muted'>Contact records are manually added or sourced from public company pages. Email status is not independently verified by this release.</p><table><tr><th>Name</th><th>Company</th><th>Role</th><th>Email</th><th>Status</th><th></th></tr>"+body+"</table><p><a href='/export/contacts.csv'>Export contacts CSV</a></p><section><h2>Import contacts CSV</h2><form method='post' action='/import/contacts.csv' enctype='multipart/form-data'><input type='file' name='file' accept='.csv,text/csv' required><button>Import contacts</button></form></section>")
 
 @app.get("/campaigns",response_class=HTMLResponse)
 def campaigns_page():
@@ -178,6 +178,40 @@ def test_ai_provider():
 @app.post("/settings/suppressions")
 def suppress_route(value:str=Form(...),reason:str=Form("")):
  add_suppression(value,reason);return RedirectResponse("/settings",303)
+
+@app.post("/import/companies.csv",response_class=HTMLResponse)
+async def import_companies_csv(file:UploadFile=File(...)):
+ raw=await file.read(5_000_001)
+ if len(raw)>5_000_000: raise HTTPException(413,"CSV file is too large (5 MB maximum).")
+ try: rows=csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+ except UnicodeDecodeError: raise HTTPException(400,"Upload a UTF-8 CSV file.")
+ saved=0; skipped=0
+ for row in rows:
+  name=(row.get("name") or "").strip()
+  if not name: skipped+=1; continue
+  phone=(row.get("phone") or "").strip(); website=(row.get("website") or "").strip()
+  if find_company_duplicate(website,phone): skipped+=1; continue
+  add_company(name,website,row.get("industry",""),row.get("location",""),row.get("notes",""),"csv_import",row.get("source_url",""),phone,row.get("email",""),row.get("socials","")); saved+=1
+ return shell(f"<h1>Company CSV import</h1><p>Imported {saved}; skipped {skipped} empty or duplicate rows.</p><a href='/companies'>Back to companies</a>")
+
+@app.post("/import/contacts.csv",response_class=HTMLResponse)
+async def import_contacts_csv(file:UploadFile=File(...)):
+ raw=await file.read(5_000_001)
+ if len(raw)>5_000_000: raise HTTPException(413,"CSV file is too large (5 MB maximum).")
+ try: rows=csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+ except UnicodeDecodeError: raise HTTPException(400,"Upload a UTF-8 CSV file.")
+ saved=0; skipped=0
+ with connect() as conn: companies=[dict(x) for x in conn.execute("SELECT id,name FROM companies")]
+ by_name={x["name"].strip().lower():x["id"] for x in companies}
+ valid_ids={x["id"] for x in companies}
+ for row in rows:
+  try: company_id=int(row.get("company_id") or 0)
+  except ValueError: company_id=0
+  if company_id not in valid_ids: company_id=by_name.get((row.get("company_name") or "").strip().lower(),0)
+  email=(row.get("email") or "").strip()
+  if not company_id or (email and is_suppressed(email)): skipped+=1; continue
+  add_contact(company_id,row.get("name",""),row.get("title",""),email,row.get("phone",""),row.get("source_url",""),row.get("email_status","unknown"),row.get("notes","")); saved+=1
+ return shell(f"<h1>Contact CSV import</h1><p>Imported {saved}; skipped {skipped} missing-company or suppressed rows.</p><a href='/contacts'>Back to contacts</a>")
 
 @app.get("/export/companies.csv")
 def export_companies():
