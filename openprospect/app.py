@@ -30,8 +30,8 @@ def shell(body):
 
 def company_table(items):
  if not items:return "<p class='muted'>No companies yet. Add one or use Discover.</p>"
- rows="".join(f"<tr><td><b>{esc(x['name'])}</b><br><small>#{x['id']} · {esc(x['source'])}</small></td><td>{esc(x['website']) or '—'}</td><td>{esc(x['industry'])}</td><td>{esc(x['location'])}</td><td><a href='/company/{x['id']}'>Open</a></td></tr>" for x in items)
- return f"<table><tr><th>Company</th><th>Website</th><th>Industry</th><th>Location</th><th></th></tr>{rows}</table>"
+ rows="".join(f"<tr><td><b>{esc(x['name'])}</b><br><small>#{x['id']} · {esc(x['source'])}</small></td><td>{esc(x['website']) or '—'}</td><td>{esc(x['industry'])}</td><td>{esc(x['location'])}</td><td>{esc(x.get('phone',''))}</td><td><a href='/company/{x['id']}'>Open</a></td></tr>" for x in items)
+ return f"<table><tr><th>Company</th><th>Website</th><th>Industry</th><th>Location</th><th>Phone</th><th></th></tr>{rows}</table>"
 
 @app.get("/",response_class=HTMLResponse)
 def home():
@@ -57,11 +57,11 @@ def discover_run(city:str=Form(...),category:str=Form("any business"),limit:int=
  return shell(f"<h1>Discovery complete</h1><p>Found {len(results)} map entries; saved {saved} new companies.</p><section><table><tr><th>Name</th><th>Category</th><th>Website</th><th>Phone</th></tr>{rows}</table></section><a href='/companies'>Open company register</a> · <a href='/discover'>Search again</a>")
 
 @app.get("/companies",response_class=HTMLResponse)
-def companies_page():return shell("<h1>Companies</h1>"+company_table(list_companies(10000))+"""<section><h2>Add company manually</h2><form method='post' action='/companies'><input name='name' placeholder='Business name' required><input name='website' placeholder='https://example.com'><input name='industry' placeholder='Industry'><input name='location' placeholder='City, country'><textarea name='notes' placeholder='Notes and source context'></textarea><button>Add company</button></form><p><a href='/export/companies.csv'>Export companies as CSV</a></p></section>""")
+def companies_page():return shell("<h1>Companies</h1>"+company_table(list_companies(10000))+"""<section><h2>Add company manually</h2><form method='post' action='/companies'><input name='name' placeholder='Business name' required><input name='website' placeholder='https://example.com'><input name='industry' placeholder='Industry'><input name='location' placeholder='City, country'><input name='phone' placeholder='Public business phone'><input name='email' placeholder='Published business email'><input name='socials' placeholder='Public social links'><textarea name='notes' placeholder='Notes and source context'></textarea><button>Add company</button></form><p><a href='/export/companies.csv'>Export companies as CSV</a></p></section>""")
 
 @app.post("/companies")
-def create_company(name:str=Form(...),website:str=Form(""),industry:str=Form(""),location:str=Form(""),notes:str=Form("")):
- add_company(name,website,industry,location,notes);return RedirectResponse("/companies",303)
+def create_company(name:str=Form(...),website:str=Form(""),industry:str=Form(""),location:str=Form(""),notes:str=Form(""),phone:str=Form(""),email:str=Form(""),socials:str=Form("")):
+ add_company(name,website,industry,location,notes,"manual","",phone,email,socials);return RedirectResponse("/companies",303)
 
 @app.get("/company/{company_id}",response_class=HTMLResponse)
 def company_detail(company_id:int):
@@ -181,7 +181,7 @@ def suppress_route(value:str=Form(...),reason:str=Form("")):
 
 @app.get("/export/companies.csv")
 def export_companies():
- rows=list_companies(100000);buf=io.StringIO();w=csv.DictWriter(buf,fieldnames=["id","name","website","industry","location","notes","source","source_url"]);w.writeheader()
+ rows=list_companies(100000);buf=io.StringIO();w=csv.DictWriter(buf,fieldnames=["id","name","website","industry","location","notes","phone","email","socials","source","source_url"]);w.writeheader()
  for r in rows:w.writerow({k:r.get(k,"") for k in w.fieldnames})
  return StreamingResponse(iter([buf.getvalue()]),media_type="text/csv",headers={"Content-Disposition":"attachment; filename=openprospect-companies.csv"})
 @app.get("/export/contacts.csv")
