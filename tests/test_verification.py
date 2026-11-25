@@ -107,3 +107,24 @@ def test_generated_guess_only_promotes_after_non_catchall_smtp(monkeypatch):
     result = verification.verify_email("jamie.fox@example.test", is_guess=True)
     assert result["status"] == "verified"
     assert verification.is_deliverable(result)
+
+
+def test_contact_guess_route_learns_published_company_pattern(monkeypatch, tmp_path):
+    monkeypatch.setenv("OPENPROSPECT_HOME", str(tmp_path))
+    from fastapi.testclient import TestClient
+    from openprospect import app as app_module
+    from openprospect.db import add_company, add_contact, connect
+    from openprospect.security import get_dashboard_token
+
+    company_id = add_company("Pattern Co", "https://pattern.example")
+    add_contact(company_id, name="Alice Smith", email="alice.smith@pattern.example", source_url="https://pattern.example/team")
+    add_contact(company_id, name="Bob Jones", email="bob.jones@pattern.example", source_url="https://pattern.example/team")
+    target_id = add_contact(company_id, name="Jamie Fox")
+    client = TestClient(app_module.app, base_url="http://127.0.0.1")
+    client.post("/auth/exchange", json={"token": get_dashboard_token()})
+    response = client.post(f"/contact/{target_id}/guess")
+    assert response.status_code == 200
+    with connect() as conn:
+        row = conn.execute("SELECT email,email_status FROM contacts WHERE id=?", (target_id,)).fetchone()
+    assert row["email"] == "jamie.fox@pattern.example"
+    assert row["email_status"] == "guess"
