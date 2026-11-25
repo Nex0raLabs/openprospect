@@ -51,3 +51,12 @@ def test_training_rejects_unsafe_url_forms(url):
 def test_training_requires_existing_profile_before_edit(tmp_path):
     with pytest.raises(ValueError):
         training.save_training({"icp": "restaurants"}, tmp_path)
+
+
+def test_training_redirect_handler_rejects_private_destination():
+    handler = training._PublicRedirectHandler()
+    request = __import__("urllib.request", fromlist=["Request"]).Request("https://public.example/")
+    with pytest.raises(ValueError, match="Private, loopback"):
+        handler.redirect_request(
+            request, None, 302, "Found", {}, "http://127.0.0.1/admin"
+        )
