@@ -44,6 +44,11 @@ def connect():
     CREATE TABLE IF NOT EXISTS activity(
       id INTEGER PRIMARY KEY AUTOINCREMENT,event TEXT NOT NULL,details TEXT DEFAULT '',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE IF NOT EXISTS observations(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,company_id INTEGER NOT NULL,signal_code TEXT NOT NULL,
+      label TEXT DEFAULT '',weight INTEGER DEFAULT 0,confidence REAL DEFAULT 0.0,
+      evidence_url TEXT DEFAULT '',observed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(company_id) REFERENCES companies(id) ON DELETE CASCADE);
     """)
     # Additive migration for databases created by earlier OpenProspect releases.
     columns = {row["name"] for row in c.execute("PRAGMA table_info(companies)")}
@@ -185,3 +190,25 @@ def is_suppressed(value):
 def list_activity(limit=100):
     with connect() as c:
         return [dict(r) for r in c.execute("SELECT * FROM activity ORDER BY id DESC LIMIT ?", (limit,))]
+
+
+def save_company_observations(company_id, signals):
+    with connect() as c:
+        if not c.execute("SELECT id FROM companies WHERE id=?", (company_id,)).fetchone():
+            raise ValueError("Company not found.")
+        for signal in signals:
+            c.execute(
+                "INSERT INTO observations(company_id,signal_code,label,weight,confidence,evidence_url) VALUES(?,?,?,?,?,?)",
+                (company_id, signal.get("code", ""), signal.get("label", ""),
+                 int(signal.get("weight", 0)), float(signal.get("confidence", 0)),
+                 signal.get("evidence_url", "")),
+            )
+
+
+def list_observations(limit=500):
+    with connect() as c:
+        return [dict(row) for row in c.execute(
+            "SELECT observations.*,companies.name company_name FROM observations "
+            "JOIN companies ON companies.id=observations.company_id "
+            "ORDER BY observations.id DESC LIMIT ?", (limit,)
+        )]
