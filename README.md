@@ -23,7 +23,13 @@ OpenProspect is an open-source application for finding businesses from public ma
 | Suppression list | Store opt-out addresses and block draft creation for exact suppressed email |
 | Imports / exports | Company and contact CSV import and export |
 | Company deduplication | Normalized website domain and Kenyan phone formats |
-| Email | SMTP STARTTLS delivery, verified-recipient gate, suppression check, unsubscribe headers and configurable daily cap |\n| Mailbox sync | IMAP SSL sync for unread messages; detects opt-out phrases and adds suppressions |\n| Conversations | Shared local inbox records for inbound email and WhatsApp events |\n| WhatsApp | Optional Node/Baileys sidecar with pairing-code request, explicit text send and inbound webhook |\n| Automation | Start/pause/run loop for public website profiling and buying-signal capture; never sends automatically |\n| Compliance | SPF, DMARC and MX DNS lookup plus a practical privacy checklist; DKIM requires a provider selector |\n| Activity | Local audit trail for key operations |
+| Email | SMTP STARTTLS delivery for explicitly approved drafts; requires verified recipient, suppression check and HTTPS unsubscribe URL |
+| Mailbox sync | Manual IMAP SSL import of unread messages; basic opt-out phrase detection only |
+| Conversations | Minimal last-message summaries grouped by channel and address; no full reply workflow |
+| WhatsApp | Optional unofficial Node/Baileys sidecar; pairing and real sending have not been end-to-end tested |
+| Automation | Start/pause/run loop profiles saved companies and records buying signals; it never sends automatically |
+| Compliance | SPF, DMARC and MX DNS presence lookups plus a practical privacy checklist; DKIM is not checked |
+| Activity | Local audit trail for key operations |
 | MCP | Optional tools to search saved companies, save companies and call configured AI |
 
 ## Zero-budget operation
