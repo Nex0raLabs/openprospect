@@ -4,7 +4,7 @@ from fastapi import FastAPI,Form,HTTPException
 from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse
 from .db import (add_company,list_companies,connect,add_contact,list_contacts,
  add_campaign,list_campaigns,add_draft,list_drafts,set_draft_status,
- add_suppression,list_activity,is_suppressed,log)
+ add_suppression,list_activity,is_suppressed,log,find_company_duplicate)
 from .ai import ask_ai
 from .discovery import discover_osm
 from .profiling import profile_website
@@ -49,11 +49,9 @@ def discover_run(city:str=Form(...),category:str=Form("any business"),limit:int=
  except Exception as e:return shell(f"<h1>Discovery issue</h1><p class='warning'>{esc(e)}</p><a href='/discover'>Try again</a>")
  saved=0
  for x in results:
-  # Skip exact duplicate name + website/location pair.
-  with connect() as c:
-   exists=c.execute("SELECT id FROM companies WHERE lower(name)=lower(?) AND lower(location)=lower(?)",(x["name"],x["address"] or city)).fetchone()
-  if exists:continue
-  add_company(x["name"],x["website"],x["category"],x["address"] or city,"Phone: "+x["phone"] if x["phone"] else "", "openstreetmap",x["source_url"]);saved+=1
+  # Deduplicate against a normalized company domain or phone number.
+  if find_company_duplicate(x["website"],x["phone"]):continue
+  add_company(x["name"],x["website"],x["category"],x["address"] or city,"", "openstreetmap",x["source_url"],x["phone"],x["email"],x["socials"]);saved+=1
  rows="".join(f"<tr><td>{esc(x['name'])}</td><td>{esc(x['category'])}</td><td>{esc(x['website']) or 'No website listed'}</td><td>{esc(x['phone'])}</td></tr>" for x in results)
  log("discovery_completed",f"{city}: {len(results)} found, {saved} new")
  return shell(f"<h1>Discovery complete</h1><p>Found {len(results)} map entries; saved {saved} new companies.</p><section><table><tr><th>Name</th><th>Category</th><th>Website</th><th>Phone</th></tr>{rows}</table></section><a href='/companies'>Open company register</a> · <a href='/discover'>Search again</a>")
@@ -197,7 +195,7 @@ def api_companies():return {"companies":list_companies(1000)}
 @app.post("/api/companies")
 def api_add_company(payload:dict):
  if not payload.get("name"):raise HTTPException(400,"name is required")
- return {"id":add_company(payload["name"],payload.get("website",""),payload.get("industry",""),payload.get("location",""),payload.get("notes",""),"api"),"ok":True}
+ return {"id":add_company(payload["name"],payload.get("website",""),payload.get("industry",""),payload.get("location",""),payload.get("notes",""),"api","",payload.get("phone",""),payload.get("email",""),payload.get("socials","")),"ok":True}
 @app.post("/api/ai")
 def ai_chat(payload:dict):
  prompt=str(payload.get("prompt","")).strip()
