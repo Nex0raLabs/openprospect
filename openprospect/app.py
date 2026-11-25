@@ -7,7 +7,8 @@ from .db import (add_company,list_companies,connect,add_contact,list_contacts,
  add_suppression,list_activity,is_suppressed,log,find_company_duplicate,save_company_observations,set_contact_email_status)
 from .ai import ask_ai
 from .discovery import discover_osm
-from .profiling import profile_website\nfrom .verification import verify_email
+from .profiling import profile_website
+from .verification import verify_email
 
 app=FastAPI(title="OpenProspect",version="0.2.0")
 CSS="""<style>
