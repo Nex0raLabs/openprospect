@@ -179,3 +179,31 @@ Key implementation risks found during source review:
 - Added deterministic buying signals for HTTPS, mobile viewport declaration, schema markup, WhatsApp links, booking/ordering, contact pages, stale copyright years, slow homepage response and hiring pages.
 - Added editable built-in signal weights and custom keyword rules, evidence links, confidence values, an explainable opportunity score and persistent observation history.
 - The full requested feature set remains incomplete; see unchecked items above. No live outbound messaging capability has been added.
+
+
+## Platform implementation additions (2026-11-26)
+
+The following code has now been added on this feature branch. These are implementation notes, not claims of live account connectivity or completed end-to-end validation.
+
+- SMTP STARTTLS sender reads credentials from environment variables, requires an explicit approved draft, a verified non-catch-all recipient and a non-suppressed address; adds List-Unsubscribe headers and a configurable daily cap (default 25, maximum 100).
+- Public GET and RFC 8058-style POST unsubscribe handlers add the address to the local suppression list.
+- IMAP SSL sync imports unread text messages, records inbound opt-out phrases as suppressions, and writes to the unified inbox store.
+- A shared conversation schema and dashboard Inbox page are present for email and WhatsApp events.
+- Optional Node 20+ Baileys sidecar supports phone-number pairing-code requests, explicit text sends, connection status and inbound webhook forwarding. This is unofficial WhatsApp Web connectivity; official Cloud API support is not included.
+- A local autonomous loop and `openprospect run` command profile saved companies and record buying signals. It intentionally does not autonomously send messages.
+- Responsive dark dashboard styling and navigation for Inbox, Controls, Compliance, Connections and WhatsApp have been added.
+- DNS checks report SPF, DMARC and MX records; DKIM is explicitly marked not tested without a provider selector. Privacy readiness checklist is operational guidance only.
+- Added tests for unified conversation storage, mailbox configuration status, privacy checklist and paused-by-default automation.
+
+### Validation and remaining release gates
+
+- [ ] Confirm latest GitHub Actions run passes on the current branch head (all Python and OS matrix jobs).
+- [ ] Test SMTP against a mailbox controlled by the user, including unsubscribe and suppression.
+- [ ] Test IMAP with a mailbox controlled by the user and confirm thread/reply behavior.
+- [ ] Install the sidecar, pair a user-controlled WhatsApp account and test inbound/outbound messaging.
+- [ ] Validate SPF/DKIM/DMARC alignment for the actual sending domain.
+- [ ] Finish full reply classification, bounce processing, message status callbacks, campaign stop/resume and safe retry handling.
+- [ ] Expand the automation pipeline beyond website profiling, keeping all outbound communication approval-gated.
+- [ ] Finish advanced dashboard functions (global search/command palette, analytics charts, saved filters, bulk operations, kanban and PWA).
+- [ ] Review the unsubscribe deployment model: dashboard remains loopback-only, while a production public unsubscribe endpoint needs a separately hardened deployment architecture.
+- [ ] Do not merge until the test matrix and live integration checks are complete.
