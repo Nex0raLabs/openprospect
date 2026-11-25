@@ -18,6 +18,11 @@ def send_email(*,to:str,subject:str,body:str,unsubscribe_url:str,verification:di
     if not is_deliverable(verification) or verification.get("address","").lower()!=to.lower():
         raise RuntimeError("Recipient must have a current verified, non-catch-all email result.")
     if is_suppressed(to): raise RuntimeError("Recipient is on the suppression list.")
+    daily_cap = max(1, min(int(os.getenv("OPENPROSPECT_DAILY_SEND_LIMIT", "25")), 100))
+    with connect() as c:
+        sent_today = c.execute("SELECT COUNT(*) FROM activity WHERE event=? AND date(created_at)=date(?)", ("email_sent", datetime.date.today().isoformat())).fetchone()[0]
+    if sent_today >= daily_cap:
+        raise RuntimeError("Daily sending limit reached (" + str(daily_cap) + ").")
     msg=EmailMessage(); msg["From"]=os.environ["OPENPROSPECT_FROM_EMAIL"]; msg["To"]=to
     msg["Subject"]=subject; msg["Date"]=formatdate(localtime=True); msg["Message-ID"]=make_msgid()
     msg["List-Unsubscribe"]=f"<{unsubscribe_url}>"; msg["List-Unsubscribe-Post"]="List-Unsubscribe=One-Click"
