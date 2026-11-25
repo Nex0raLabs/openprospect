@@ -174,7 +174,7 @@ def list_drafts():
 
 
 def set_draft_status(draft_id, status):
-    if status not in ("draft", "approved", "rejected"):
+    if status not in ("draft", "approved", "rejected", "sent"):
         raise ValueError("Invalid draft status")
     with connect() as c:
         c.execute(
