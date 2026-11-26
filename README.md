@@ -1,81 +1,167 @@
-# OpenProspect
+<div align="center">
 
-**Free, local-first business discovery and prospect research workspace.**
+<img src="assets/zero-hawk-mark.svg" alt="Zero Hawk mark" width="116" />
 
-OpenProspect is an open-source application for finding businesses from public map data, recording company and contact information, researching public websites, organising campaigns and preparing AI-assisted outreach drafts. It is designed to work for any industry, business and country where the selected data source has coverage.
+# ZERO HAWK
 
-> **Status:** local-first prospecting and outreach alpha. SMTP/IMAP, an optional WhatsApp Web sidecar, unified inbox storage, a profile-only automation loop and DNS checks are implemented in this branch. Live provider accounts, mailbox credentials, a paired WhatsApp device and production end-to-end tests are still required. This is not yet a turnkey or fully autonomous Sellbird replacement.
+### Find the right businesses. Understand the opportunity. Make every outreach decision count.
 
-## What works today
+**A local-first prospecting and outreach command centre — built to keep your data on your machine and every important action under your control.**
 
-| Capability | Current implementation |
-| --- | --- |
-| Local dashboard | FastAPI dashboard at `http://127.0.0.1:5555` |
-| Company register | Add, view, store and export companies in SQLite |
-| Business discovery | Free OpenStreetMap / Overpass + Nominatim, 10 km around a geocoded place |
-| Website research | Reads the public homepage and up to two relevant same-site pages (robots.txt-aware), extracts public contact strings and records evidence-backed buying signals |
-| Contacts | Manually record contacts, role, source URL and email status |
-| Campaigns | Create and organise campaign records |
-| Product training | `openprospect train <url>` reads the public site and saves an editable local company profile; Train screen available in the dashboard |
-| Buying signals | Configurable deterministic checks for HTTPS, mobile viewport, schema, WhatsApp, booking/ordering, contact pages, stale copyright, load time and hiring pages |
-| AI drafts | Ollama locally, Claude Code CLI, Codex CLI, or optional Anthropic / OpenAI-compatible endpoints |
-| Outbox | Review, approve, reject and explicitly send approved email drafts after SMTP + verified-recipient checks |
-| Suppression list | Store opt-out addresses and block draft creation for exact suppressed email |
-| Imports / exports | Company and contact CSV import and export |
-| Company deduplication | Normalized website domain and Kenyan phone formats |
-| Email | SMTP STARTTLS delivery for explicitly approved drafts; requires verified recipient, suppression check and HTTPS unsubscribe URL |
-| Mailbox sync | Manual IMAP SSL import of unread messages; basic opt-out phrase detection only |
-| Conversations | Minimal last-message summaries grouped by channel and address; no full reply workflow |
-| WhatsApp | Optional unofficial Node/Baileys sidecar; pairing and real sending have not been end-to-end tested |
-| Automation | Start/pause/run loop profiles saved companies and records buying signals; it never sends automatically |
-| Compliance | SPF, DMARC and MX DNS presence lookups plus a practical privacy checklist; DKIM is not checked |
-| Activity | Local audit trail for key operations |
-| MCP | Optional tools to search saved companies, save companies and call configured AI |
+[Quick start](#-quick-start) · [What it does](#-what-zero-hawk-does) · [Safety](#-human-control-first) · [Roadmap](#-honest-status)
 
-## Zero-budget operation
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/License-AGPL--3.0-blue)
+![Runs locally](https://img.shields.io/badge/Runs-local-first-9ACD32)
+![Tests](https://img.shields.io/badge/CI-Windows%20%7C%20Ubuntu-222222?logo=githubactions)
 
-The default AI provider is **Ollama**, which can run a model locally without API charges. Install Ollama and download a model separately; model downloads require disk space and local compute. The free discovery source is OpenStreetMap. Neither source guarantees complete coverage or current business details.
+</div>
 
-OpenProspect itself has no subscription fee. Optional cloud AI providers may charge for usage. No paid provider is required for the local CRM, manual data entry, local profiling or exports.
+---
 
-## Windows quick start
+## The idea
 
-Requirements: Windows 10/11, Python 3.11 or newer, Git (or download the ZIP).
+Zero Hawk helps you move from a target market to an organised, evidence-backed prospect list without handing your entire workflow to a black box.
+
+It can discover businesses from OpenStreetMap, research public websites, record buying signals, organise companies and contacts, prepare AI-assisted drafts, and keep approved outreach in a review-first workflow.
+
+It runs on your own computer. Your local database stays local. Optional AI providers and messaging services are only used when you configure them.
+
+> **Built around one rule: you stay in control.** No campaign is silently launched by the background profiling loop. Email sending requires an explicitly approved draft and the configured checks.
+
+## What Zero Hawk does
+
+| Stage | What happens | Where to look |
+| --- | --- | --- |
+| **Discover** | Find businesses from free OpenStreetMap / Overpass data around a place you choose | Discover |
+| **Research** | Read public business websites and collect source-linked observations | Companies |
+| **Spot signals** | Score configurable website indicators such as booking, ordering, HTTPS and hiring pages | Signals |
+| **Organise** | Keep companies, contacts, campaigns, notes and activity in a local SQLite database | Companies · Contacts · Campaigns |
+| **Train** | Read your own website and create an editable local profile for your product, offer and ideal customer | Train |
+| **Draft** | Use a configured local or connected AI provider to prepare outreach drafts | Outbox |
+| **Review** | Inspect drafts and explicitly approve or reject them | Outbox |
+| **Send** | Send an approved, eligible email through configured SMTP | Outbox |
+| **Connect** | Expose a small set of local tools to compatible MCP clients | MCP |
+
+### A look at the workflow
+
+```text
+  YOUR PRODUCT / OFFER
+          |
+          v
+  TRAIN YOUR WORKSPACE
+          |
+          v
+  DISCOVER BUSINESSES  ---->  COMPANY REGISTER
+          |                         |
+          v                         v
+  RESEARCH PUBLIC SITES      CONTACTS & CAMPAIGNS
+          |                         |
+          v                         v
+  BUYING-SIGNAL EVIDENCE      AI-ASSISTED DRAFTS
+                                    |
+                                    v
+                              HUMAN REVIEW
+                                    |
+                           approve explicitly
+                                    |
+                                    v
+                              SMTP SEND
+```
+
+Zero Hawk can be used one stage at a time. You do not need to connect an email account to use discovery, research, local records, signals or exports.
+
+## ✨ Highlights
+
+- **Local-first:** FastAPI dashboard with a local SQLite database.
+- **Free discovery source:** OpenStreetMap / Overpass and Nominatim; no paid API key required for the default source.
+- **Evidence-aware research:** Public-site observations retain source URLs and confidence context.
+- **Configurable signals:** Deterministic website checks; no AI call is required for signal profiling.
+- **Flexible AI:** Ollama, Claude Code CLI, Codex CLI, and optional hosted API-compatible providers.
+- **Human-reviewed email:** SMTP sending is gated by explicit approval, recipient status, suppression checks and an HTTPS unsubscribe base URL.
+- **Portable data:** CSV import and export for company and contact records.
+- **Compatible tools:** Optional MCP server for supported local AI clients.
+- **Windows-friendly:** One-click `run.bat` setup for Windows 10/11.
+
+## 🦅 Quick start
+
+### Requirements
+
+- Windows 10 or 11
+- Python **3.11 or newer**
+- Git for Windows
+- Internet connection for package installation and online discovery
+
+No API key is needed to install or open the dashboard. Ollama or another AI provider is optional.
+
+### 1. Clone the repository
+
+Open **Command Prompt** (CMD), then run each command separately:
 
 ```cmd
+cd %USERPROFILE%
 git clone https://github.com/linkto254-bot/openprospect.git
 cd openprospect
+```
+
+> The repository is still named `openprospect` on GitHub. The product inside it is now **Zero Hawk**. You can rename the GitHub repository later; GitHub redirects old clone URLs after a repository rename.
+
+### 2. Launch Zero Hawk
+
+```cmd
 run.bat
 ```
 
-The launcher creates `.venv`, installs the project and opens the dashboard. You can also run manually:
+The launcher creates a virtual environment, installs the application and its MCP extra, creates a starter `.env` file if needed, then starts the private dashboard.
 
-```cmd
-py -3 -m venv .venv
-.venv\Scripts\activate
-python -m pip install -e ".[dev,mcp]"
-copy .env.example .env
-openprospect dashboard
+Open the private URL printed in the terminal. It normally uses:
+
+```text
+http://127.0.0.1:5555
 ```
 
-The dashboard binds to `127.0.0.1` by default, prints a private token link, and stores data in `%USERPROFILE%\.openprospect\`. Keep the link private and do not expose the development server directly to the public internet. Stop it with `Ctrl+C`.
+Keep the private token link to yourself. Press **Ctrl+C** in the terminal to stop the server.
 
-## Train OpenProspect on your product
+### 3. If the launcher does not work
 
-Run `openprospect train https://your-company.com` to read the homepage and up to two relevant same-site pages, subject to `robots.txt`. It saves `company-training.json` under your local OpenProspect data folder. Open the dashboard **Train** screen to edit the ICP, offer, banned phrases, sender signature, language and default CTA. Extraction is heuristic and must be reviewed; it does not invent missing pricing or proof.
+Run these commands from inside the cloned folder:
 
-## Buying signals
+```cmd
+py -3 --version
+py -3 -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev,mcp]"
+copy .env.example .env
+zero-hawk dashboard
+```
 
-Open **Signals** to edit built-in signal weights or add custom keyword rules. Profile a company to store evidence-linked observations and an explainable 0–100 opportunity score. Signals are heuristic indicators, not verified claims; review the linked page before using them in outreach.
+If `py -3 --version` reports that Python is missing, install Python 3.11+ from [python.org](https://www.python.org/downloads/windows/) and enable **Add Python to PATH** during setup. Reopen CMD after installation.
 
-## AI setup
+## First five minutes
 
-### Local and free with Ollama
+1. Open **Train** and enter your business website to create an editable local product profile.
+2. Review the generated profile. Extraction is heuristic; correct anything that is wrong.
+3. Open **Signals** and choose the website indicators that matter to your offer.
+4. Open **Discover**, enter a city or place, choose a business category and search.
+5. Open a saved company to inspect its public website and evidence before deciding whether it is a suitable prospect.
 
-1. Install Ollama from [ollama.com](https://ollama.com).
-2. In another CMD window run `ollama pull llama3.2`.
-3. In the OpenProspect folder copy `.env.example` to `.env` if you have not already.
-4. Keep these values in `.env`:
+You can add companies manually and import CSV records too. Discovery results depend on OpenStreetMap coverage and are not a complete business directory.
+
+## 🧠 Choose an AI provider
+
+AI is optional. The core local workspace does not require a paid model API.
+
+### Ollama — local model
+
+1. Install [Ollama](https://ollama.com/).
+2. Open CMD and download a model, for example:
+
+```cmd
+ollama pull llama3.2
+```
+
+3. In Zero Hawk **Settings**, select Ollama, or set these values in your private `.env`:
 
 ```env
 OPENPROSPECT_AI_PROVIDER=ollama
@@ -83,30 +169,30 @@ OPENPROSPECT_AI_MODEL=llama3.2
 OPENPROSPECT_AI_BASE_URL=http://localhost:11434/v1
 ```
 
-### Subscription CLI providers
+The model runs on your computer. Performance depends on your hardware and the model you download.
 
-Choose **Claude Code CLI** or **Codex CLI** in Settings to use a CLI you have already installed and signed in to. These options do not require an API key. Use **Test connection** to run a real provider check. Missing CLIs are shown as **Not connected**.
+### Claude Code CLI or Codex CLI
+
+Choose a CLI provider in Settings if its command-line tool is already installed and signed in on your computer. Use **Test connection** to check the actual connection. A ChatGPT or Claude browser tab cannot directly call a server running on your PC; use a compatible local agent/MCP client instead.
 
 ### Optional hosted providers
 
-For an OpenAI-compatible provider set `OPENPROSPECT_AI_PROVIDER=openai-compatible`, the model, base URL and API key. For Anthropic set `OPENPROSPECT_AI_PROVIDER=anthropic`, `OPENPROSPECT_AI_MODEL` and `OPENPROSPECT_AI_API_KEY`. Provider usage may incur charges. Keep `.env` private and never commit keys.
+Anthropic and OpenAI-compatible endpoints can be configured with their respective API keys. Provider usage may incur charges. Never paste API keys into GitHub, screenshots, issues or chat messages.
 
-## Use in compatible AI chats (MCP)
+## 🔌 Connect a compatible AI client (MCP)
 
-Install the optional MCP dependency (included by `run.bat`):
+Zero Hawk includes an optional local MCP server. Install the extra:
 
 ```cmd
-.venv\Scripts\activate
 python -m pip install -e ".[mcp]"
-openprospect mcp
 ```
 
-Configure an MCP-capable desktop/agent client to launch the command in this repository's virtual environment. Example stdio server entry (replace the Windows username and path):
+A compatible desktop/agent client can launch the server using the Python executable inside this checkout. Example configuration:
 
 ```json
 {
   "mcpServers": {
-    "openprospect": {
+    "zero-hawk": {
       "command": "C:\\Users\\YOUR_USER\\openprospect\\.venv\\Scripts\\python.exe",
       "args": ["-m", "openprospect.mcp_server"],
       "cwd": "C:\\Users\\YOUR_USER\\openprospect"
@@ -115,115 +201,82 @@ Configure an MCP-capable desktop/agent client to launch the command in this repo
 }
 ```
 
-Available MCP tools: `search_companies`, `save_company`, and `ask_configured_ai`. MCP clients must support local stdio MCP servers. A browser-only chat service cannot directly reach a process running on your PC without a separate secure bridge.
+Replace `YOUR_USER` with your Windows account folder. The current MCP tools cover searching saved companies, saving a company and asking the configured AI provider. They do not provide a remote cloud bridge into a browser-only chat.
 
-## Discovery and data quality
+## 🛡️ Human control first
 
-Open the **Discover** tab, enter a city/place and select a category. OpenProspect geocodes the place using Nominatim and searches OpenStreetMap within a 10 km radius using Overpass. Coverage depends on volunteer map data. Search results may be incomplete, outdated or missing websites and contact details. A website being present does not mean the business is a suitable prospect or has consented to marketing.
+- The background run command profiles saved companies and records signals; it does **not** run an autonomous send campaign.
+- Email delivery is optional and requires SMTP configuration.
+- A draft must be explicitly approved before it can be sent.
+- The send path checks the app's verified-recipient status, suppression list and HTTPS unsubscribe configuration.
+- A verification label is a heuristic status, not proof that a person owns or reads an inbox.
+- Public contact details do not automatically mean someone has consented to marketing.
+- WhatsApp support is an optional unofficial Baileys sidecar and has not been proven production-ready.
 
-The **Company** page can fetch the public homepage and up to two relevant same-site pages, subject to robots.txt. It records configurable buying signals with evidence URLs and confidence. Public email and phone strings remain unverified until the separate contact verification action is run. Email verification is heuristic and network-dependent; SMTP RCPT acceptance is not a guarantee of inbox delivery.
-
-## Safety and compliance
-
-- Email can be sent through SMTP after explicit approval and recipient verification; no automatic campaign sending is implemented.
-- WhatsApp sending is available only through the optional unofficial Baileys sidecar and has not been end-to-end validated.
-- Publicly visible contact details are not automatically permission to send marketing.
-- Check applicable privacy, direct-marketing and anti-spam laws in the sender's and recipient's jurisdictions.
-- Record the source of personal data, honour objections and opt-outs, and use the suppression list.
-- Do not use the development server on a public network without adding production authentication, HTTPS and security review.
-- Do not put real prospect data, passwords or API keys in GitHub issues, commits or logs.
+Use a test mailbox and contacts you control before any real sending. Follow the marketing, privacy and anti-spam laws that apply to you and your recipients.
 
 ## Commands
 
-```cmd
-openprospect dashboard
-openprospect train https://your-company.com
-openprospect status
-openprospect companies
-openprospect mcp
-```
-
-## Tests
+The primary command is now `zero-hawk`. The previous `openprospect` command remains as a compatibility alias.
 
 ```cmd
-python -m pip install -e ".[dev,mcp]"
-python -m pytest -q
+zero-hawk dashboard
+zero-hawk status
+zero-hawk companies
+zero-hawk train https://your-company.com
+zero-hawk run
+zero-hawk mcp
 ```
 
-GitHub Actions runs tests on Windows and Ubuntu with Python 3.11, 3.12 and 3.13.
+## Honest status
 
-## Not implemented or not verified
+Zero Hawk is an active local-first alpha, not a finished autonomous sales platform. The following areas are present only in limited form or still need live integration work:
 
-- Decision-maker discovery and contact enrichment providers
-- Gmail / Microsoft 365 OAuth integrations and provider-specific mailbox support
-- Full inbox threading, reply classification, bounce and out-of-office handling, sequence stop rules, reply composer and notes
-- Scheduled campaigns, office-hour windows, jitter, cross-channel daily caps and deliverability monitoring
-- Full autonomous discovery → enrichment → verification → writing → approval pipeline
-- WhatsApp delivery/read callbacks, STOP handling, duplicate-message protection, randomized delays, daily cap and auto-pause safety rails
-- Official WhatsApp Cloud API integration
-- Advanced cohort builder, analytics, Usage and Help screens, command palette, global search, kanban, bulk actions and PWA
-- Production authentication, encrypted secrets storage and multi-user deployment
+| Area | Current state |
+| --- | --- |
+| Dashboard, local records, CSV | Implemented; needs your clean-machine acceptance test |
+| OpenStreetMap discovery | Implemented; coverage and results vary by area |
+| Website signals and training | Implemented with heuristic extraction; review the output |
+| AI provider connections | Provider options exist; test with your own installed provider |
+| SMTP sending | Implemented with manual approval gates; live mailbox testing required |
+| IMAP | Basic unread-message import; not a complete reply-management system |
+| WhatsApp | Optional unofficial sidecar; pairing and production safety not verified |
+| Decision-maker enrichment | No complete provider-backed enrichment pipeline |
+| Campaign automation | No full discovery-to-send autonomous pipeline |
+| Production deployment | Not supported as a public multi-user service; dashboard is loopback-only |
 
-Do not treat the integrations as production-ready. SMTP, IMAP and WhatsApp require live provider testing with accounts and devices you control.
+See [REPORT.md](REPORT.md) for the detailed evidence-based QA audit, known blockers and release limitations. Do not interpret a feature's presence in the interface as proof of a complete end-to-end integration.
 
-## License
+## Troubleshooting
 
-OpenProspect is licensed under **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE). This is an independent project informed by publicly available concepts and documentation; any future code derived from another AGPL project must retain applicable copyright notices and comply with its license.
+**'git' is not recognized**  
+Install [Git for Windows](https://git-scm.com/download/win), reopen CMD and retry.
 
-Upstream project referenced for feature comparison: https://github.com/ethanplusai/sellbird
+**'py' is not recognized**  
+Install Python 3.11+ and enable the Python Launcher / PATH option.
+
+**The dashboard command is not recognized**  
+Activate the virtual environment from the project folder, then run `python -m pip install -e ".[dev,mcp]"` again.
+
+**Port 5555 is already in use**  
+Close the other Zero Hawk process first. If you intentionally need another local port, set `OPENPROSPECT_PORT` in `.env` and restart.
+
+**Discovery returns few businesses**  
+OpenStreetMap is community-maintained. Try a broader place/category or add companies manually; results are not guaranteed to be complete.
+
+## Project files and privacy
+
+- `.env` — private provider and mailbox settings; never commit it.
+- `.venv/` — local Python environment.
+- Local database and app state — stored in your user data folder.
+- `REPORT.md` — QA evidence and known limitations.
+
+Do not commit real prospect data, mailbox credentials, WhatsApp session files, API keys or dashboard token files.
 
 ## Contributing
 
-Issues and pull requests are welcome. Never submit real personal data, API keys or credentials. Please include tests for code changes.
+Issues and pull requests are welcome. Include reproducible steps and tests for code changes. Never submit real personal data or secrets.
 
+## License
 
-## Email sending and inbox sync
-
-Email is optional and remains disconnected until configured. Add these variables to your private `.env` file:
-
-```env
-OPENPROSPECT_SMTP_HOST=smtp.example.com
-OPENPROSPECT_SMTP_PORT=587
-OPENPROSPECT_SMTP_USER=your-mailbox
-OPENPROSPECT_SMTP_PASSWORD=your-app-password
-OPENPROSPECT_FROM_EMAIL=you@example.com
-OPENPROSPECT_DAILY_SEND_LIMIT=25
-OPENPROSPECT_PUBLIC_BASE_URL=https://your-public-host
-OPENPROSPECT_IMAP_HOST=imap.example.com
-OPENPROSPECT_IMAP_PORT=993
-OPENPROSPECT_IMAP_USER=your-mailbox
-OPENPROSPECT_IMAP_PASSWORD=your-app-password
-```
-
-Restart OpenProspect, verify the recipient in Contacts, create and review a draft, approve it, then use **Send approved email now**. Delivery is refused unless SMTP is configured, the address is marked verified by the app, it is not suppressed, and a public HTTPS unsubscribe base URL is set. The daily cap defaults to 25 and can be lowered or raised up to 100. Use a dedicated mailbox and follow your provider's sending limits. IMAP sync is manual from Inbox and imports unread messages. Test with a mailbox you control before real outreach.
-
-The current unsubscribe handler records the address in the local suppression list. For a deployment behind a reverse proxy, expose the HTTPS unsubscribe route securely; the dashboard itself is designed for loopback-only use and must not be exposed directly.
-
-## WhatsApp sidecar (optional, unofficial)
-
-The sidecar is separate from the Python app and uses the Baileys WhatsApp Web protocol. WhatsApp may restrict unofficial clients; the official Cloud API is the recommended production integration and is not implemented here.
-
-```cmd
-cd whatsapp-sidecar
-copy .env.example .env
-npm install
-```
-
-Set `WA_SIDECAR_TOKEN` to the same long random secret in the sidecar environment and the Python app's `.env`. Set `OPENPROSPECT_INBOUND_URL=http://127.0.0.1:5555/api/whatsapp/inbound` in the sidecar environment. Start the Python dashboard, then start the sidecar with `npm start`. Open **WhatsApp**, request a pairing code using your number in international format without a plus sign, and enter the code in WhatsApp → Linked devices → Link a device → Link with phone number. Send messages only to business-published numbers where you have an appropriate lawful basis and follow WhatsApp policies. Pairing and delivery must be tested on a device you control.
-
-## Autonomous controls
-
-The Controls page can start, pause or manually run a local background cycle. The current loop only profiles saved public websites and stores buying signals. It does not discover endlessly, generate campaigns, or send email/WhatsApp automatically. Human approval remains required for outbound communication.
-
-## DNS and privacy readiness
-
-Open **Compliance** to check SPF, DMARC and MX records for a domain. DKIM cannot be conclusively checked without knowing the sending provider's selector. The privacy checklist is operational guidance, not legal advice or a certification of compliance. Review the Kenya Data Protection Act, ODPC guidance, applicable direct-marketing rules and provider terms before using personal data for outreach.
-
-## Known limitations
-
-- No live SMTP/IMAP mailbox or WhatsApp device has been connected and verified in this development session.
-- IMAP currently imports unread plain-text message content and groups records by sender; complex MIME, provider-specific threading, attachments and full reply classification are not complete.
-- The Baileys bridge is an optional unofficial integration. Official WhatsApp Cloud API templates, webhook verification and message-status callbacks are not implemented.
-- The automation loop only profiles existing companies; discovery, enrichment, writing, sending and reply handling are not chained into a fully autonomous pipeline.
-- SPF/DMARC/MX lookups are DNS presence checks, not deliverability guarantees. DKIM selector discovery and alignment analysis remain future work.
-- No production deployment, public HTTPS unsubscribe test, end-to-end mailbox test or WhatsApp pairing test has been performed.
+Zero Hawk is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE).
