@@ -1,14 +1,13 @@
 import argparse, os, webbrowser
-from pathlib import Path
-import uvicorn
 from dotenv import load_dotenv
+import uvicorn
 from .db import list_companies
 from .training import train_website
 
 
 def main():
     load_dotenv()
-    parser = argparse.ArgumentParser(prog="openprospect")
+    parser = argparse.ArgumentParser(prog="zero-hawk")
     parser.add_argument("command", nargs="?", default="dashboard", choices=["dashboard", "status", "companies", "mcp", "train", "run"])
     parser.add_argument("url", nargs="?")
     parser.add_argument("--limit", type=int, default=5, help="Maximum companies to profile in one run cycle")
@@ -22,12 +21,12 @@ def main():
         from .security import get_dashboard_token
         url = f"http://{host}:{port}"
         private_url = url + "/#token=" + get_dashboard_token()
-        print(f"Private OpenProspect dashboard: {private_url}")
+        print(f"Private Zero Hawk dashboard: {private_url}")
         print("Keep this link private. Press CTRL+C to stop.")
         webbrowser.open(private_url)
         uvicorn.run(app, host=host, port=port)
     elif args.command == "status":
-        print("OpenProspect status")
+        print("Zero Hawk status")
         print("Saved companies:", len(list_companies(100000)))
         print("Outbound sending: manual SMTP / explicit approval only; no automatic campaigns")
     elif args.command == "companies":
@@ -44,7 +43,7 @@ def main():
         print("Outbound messaging:", "disabled; approval required")
     elif args.command == "train":
         if not args.url:
-            parser.error("train requires a website URL, e.g. openprospect train https://example.com")
+            parser.error("train requires a website URL, e.g. zero-hawk train https://example.com")
         data = train_website(args.url)
         print("Website training saved.")
         print("Config:", data["_config_path"])
