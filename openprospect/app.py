@@ -1,7 +1,7 @@
 from __future__ import annotations
 import csv,html,io
 from fastapi import FastAPI,Form,HTTPException,File,UploadFile
-from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse
+from fastapi.responses import HTMLResponse,RedirectResponse,StreamingResponse,Response
 from .db import (add_company,list_companies,connect,add_contact,list_contacts,
  add_campaign,list_campaigns,add_draft,list_drafts,set_draft_status,
  add_suppression,list_activity,is_suppressed,log,find_company_duplicate,save_company_observations,set_contact_email_status,set_contact_email)
@@ -15,6 +15,12 @@ app=FastAPI(title="Zero Hawk",version="0.2.0")
 CSS="""<style>
 :root{color-scheme:dark;--bg:#0b1020;--panel:#121b2b;--line:#27364b;--muted:#91a0b7;--accent:#6ea8fe;--green:#42d392}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#17243a 0,#0b1020 55%);color:#e8eef8;font:15px Inter,ui-sans-serif,system-ui,sans-serif}header{position:sticky;top:0;z-index:5;padding:17px 4%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);background:#0b1020ef;backdrop-filter:blur(16px)}.brand{font-size:23px;font-weight:850;letter-spacing:-.8px}small,.muted{color:var(--muted)}nav{position:sticky;top:70px;z-index:4;padding:12px 4%;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);background:#0b1020ef;backdrop-filter:blur(16px)}nav a{padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:13px}a{color:var(--accent);text-decoration:none}a:hover{color:#c2dcff}main{max-width:1440px;margin:30px auto;padding:0 26px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.card,section{background:linear-gradient(145deg,#172337,#111a29);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 12px 36px #0003}h1{font-size:clamp(27px,4vw,38px);letter-spacing:-1.1px;margin:0 0 10px}.number{font-size:36px;font-weight:850;letter-spacing:-1px;margin-top:8px}input,textarea,select,button{font:inherit;padding:11px 12px;border-radius:9px;border:1px solid #34445d;background:#0b1321;color:#e8eef8;width:100%;margin:5px 0}textarea{min-height:100px}button{width:auto;background:#2563eb;border:0;font-weight:700;cursor:pointer;padding:11px 17px}button:hover{filter:brightness(1.12)}button.secondary{background:#334155}table{width:100%;border-collapse:collapse;display:block;overflow-x:auto;font-size:14px}td,th{text-align:left;padding:11px;border-bottom:1px solid var(--line);vertical-align:top}form.inline{display:inline}.tag{color:var(--green)}.warning{color:#fbbf24}.muted{line-height:1.55}@media(max-width:650px){header{align-items:flex-start;flex-direction:column;gap:7px}nav{top:83px;overflow-x:auto;flex-wrap:nowrap}nav a{white-space:nowrap}main{padding:0 14px;margin:20px auto}.card,section{padding:16px}}
 </style>"""
+
+
+
+@app.get("/brand.svg", include_in_schema=False)
+def brand_icon():
+ return Response(content='''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="54" fill="#0b0f12"/><path fill="#B7F34A" d="M30 63 119 105 81 121 27 102 83 143 31 191 129 148 101 130 158 119 221 85 177 79 148 91 103 70Z"/><path fill="#F4F7EF" d="m101 130 47-39 32-8 34 5 20 15-23 7-18 25-30 20-39-4 25-17-31 2-36 27 19-33Z"/><path fill="#0b0f12" d="m190 94 24 8-18 5-14-7Z"/><path fill="#B7F34A" d="m177 111 34 7-25 12-20-6Z"/></svg>''', media_type="image/svg+xml")
 
 def esc(v):return html.escape(str(v or ""),quote=True)
 def shell(body):
