@@ -11,3 +11,21 @@ venv/
 .coverage
 htmlcov/
 .DS_Store
+
+# Local application state and credentials
+.openprospect/
+data/
+*.token
+*.session
+*.session-*
+*.pem
+*.key
+credentials.json
+client_secret*.json
+dashboard-token
+whatsapp-auth/
+auth_info_baileys/
+
+# Optional WhatsApp sidecar runtime state
+node_modules/
+whatsapp-sidecar/auth/

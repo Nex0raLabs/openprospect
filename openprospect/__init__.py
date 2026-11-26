@@ -1,2 +1,2 @@
-"""OpenProspect: free, local-first prospecting software."""
-__version__ = "0.1.0"
+"""Zero Hawk: local-first prospecting and outreach workspace."""
+__version__ = "0.2.0"

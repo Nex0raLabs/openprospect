@@ -18,8 +18,13 @@ def test_database_and_dashboard():
 
 def test_dashboard_and_company_api():
     from openprospect.app import app
-    client=TestClient(app)
-    assert client.get("/").status_code==200
+    client=TestClient(app, base_url="http://127.0.0.1")
+    from openprospect.security import get_dashboard_token
+    assert client.get("/").status_code == 200  # unauthenticated users see sign-in
+    login = client.post("/auth/exchange", json={"token": get_dashboard_token()})
+    assert login.status_code == 200
+    assert client.get("/").status_code == 200
+    assert client.get("/train").status_code == 200
     response=client.post("/api/companies",json={"name":"API Business"})
     assert response.status_code==200
     assert response.json()["ok"] is True
